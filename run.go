@@ -1,39 +1,43 @@
 package main
 
 import (
-	"fmt"
 	"image"
-	"log"
 
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/hajimehoshi/ebiten"
+	"github.com/rs/zerolog/log"
 )
 
 const mapPath = "maps/test.tmx"
 const (
-	screenWidth  = 1080
-	screenHeight = 720
+	screenWidth   = 965
+	screenHeight  = 965
+	scalingFactor = .15
 )
 
 func run() {
-	scalingFactor := .4
 
 	tmxMap, error := ebitmx.LoadFromFile(mapPath)
 	if error != nil {
-		log.Fatal(error)
+		log.Fatal().Err(error).Msg("")
 	}
 
-	startPosition := image.Point{tmxMap.PixelWidth / 2, 2400}
+	startPosition := image.Point{0, 0}
 
-	tmxMap.CameraBounds = image.Rect(0, 0, screenWidth, screenHeight)
+	tmxMap.CameraBounds = image.Rect(0, 0, 64000, 64000)
 	tmxMap.CameraPosition = startPosition
-	fmt.Printf("Map dimensions: %d/%d\n", tmxMap.PixelWidth, tmxMap.PixelHeight)
+	log.Debug().Int("width", tmxMap.PixelWidth).Int("height", tmxMap.PixelHeight).Msg("map dimensions")
 
 	game := NewGame().WithMap(tmxMap).WithScalingFactor(scalingFactor)
+	err := game.Init()
+	if err != nil {
+		log.Error().Err(err).Msg("initialising game failed")
+		return
+	}
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Go Arena")
 	if err := ebiten.RunGame(game); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 }

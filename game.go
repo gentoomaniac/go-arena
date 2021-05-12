@@ -39,25 +39,34 @@ func (g *Game) Update(screen *ebiten.Image) error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-
-	// ======== Map ========
 	scaledScreenOp := &ebiten.DrawImageOptions{}
 	scaledScreenOp.GeoM.Scale(g.scalingFactor, g.scalingFactor)
-	for i := range g.arenaMap.Layers {
-		g.screenBuffer.DrawImage(g.arenaMap.Layers[i].Render(g.arenaMap, g.scalingFactor, false), scaledScreenOp)
+	for _, layer := range g.arenaMap.Layers {
+		err := g.screenBuffer.DrawImage(layer.Render(g.arenaMap, g.scalingFactor, false), scaledScreenOp)
+		if err != nil {
+			log.Error().Err(err).Str("layer", layer.Name).Msg("rendering layer failed")
+		}
 	}
 
 	scaledScreenOp.ColorM.Scale(1, 1, 1, 0.5)
-	g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), scaledScreenOp)
+	err := g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), scaledScreenOp)
+	if err != nil {
+		log.Debug().Err(err).Msg("rendering collisionmap failed")
+	}
 
 	// ======== Screenbuffer ========
-
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(0.0, 0.0)
-	screen.DrawImage(g.screenBuffer, op)
+	err = screen.DrawImage(g.screenBuffer, op)
+	if err != nil {
+		log.Debug().Err(err).Msg("rendering screen failed")
+	}
 
 	// ======== Info ========
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	err = ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	if err != nil {
+		log.Debug().Err(err).Msg("writing Debug message failed")
+	}
 
 }
 
