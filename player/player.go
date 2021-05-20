@@ -4,8 +4,20 @@ import (
 	"fmt"
 	"image"
 
+	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/hajimehoshi/ebiten"
 )
+
+type State int
+
+const (
+	Alive State = iota
+	Dead
+)
+
+func (s State) String() string {
+	return [...]string{"Alive", "Dead"}[s]
+}
 
 type Vector struct {
 	X float64
@@ -38,7 +50,7 @@ func (c Color) String() string {
 
 type Player struct {
 	Name           string
-	Alive          bool
+	State          State
 	Position       Vector
 	Hitbox         image.Rectangle
 	Health         int
@@ -54,6 +66,7 @@ type Player struct {
 	Sprite         *ebiten.Image
 	Color          *Color
 	AI             AI
+	Animations     map[gfx.AnimationType]*gfx.Animation
 }
 
 func (p Player) GetCollisionBox() CollisionBox {

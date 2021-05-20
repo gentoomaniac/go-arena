@@ -10,6 +10,7 @@ import (
 	_ "embed"
 
 	"github.com/gentoomaniac/ebitmx"
+	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/player"
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
@@ -23,6 +24,9 @@ var (
 func NewGame() *Game {
 	return &Game{}
 }
+
+//go:embed tank.png
+var tankImage []byte
 
 func getPlayerSprite() (*ebiten.Image, error) {
 	img, err := png.Decode(bytes.NewReader(tankImage))
@@ -59,9 +63,6 @@ type Game struct {
 	players       []*player.Player
 }
 
-//go:embed tank.png
-var tankImage []byte
-
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
 	g.screenBuffer, err = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight, ebiten.FilterDefault)
@@ -80,6 +81,9 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 	g.scalingFactor = s
 	return g
 }
+
+//go:embed fire_transparent.gif
+var fireGif []byte
 
 func (g *Game) WithBots(bots []string) *Game {
 	var color *player.Color
@@ -115,16 +119,16 @@ func (g *Game) WithBots(bots []string) *Game {
 		case 3:
 			color = &player.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
-		log.Debug().Str("playerColor", color.String()).Msg("")
-		g.players = append(g.players, &player.Player{
+		player := &player.Player{
 			Name:        ai.Name(),
-			Alive:       true,
+			State:       player.Alive,
 			Position:    player.Vector{X: 1000 * float64(index), Y: 1000 * float64(index)},
 			Health:      100,
 			MaxHealth:   100,
 			Energy:      100,
 			MaxEnergy:   100,
 			Speed:       10,
+			MaxSpeed:    20,
 			Orientation: 0,
 			Sprite:      playerSprite,
 			Color:       color,
@@ -134,7 +138,18 @@ func (g *Game) WithBots(bots []string) *Game {
 			},
 			Collided: false,
 			AI:       ai,
-		})
+		}
+		player.Animations = make(map[gfx.AnimationType]*gfx.Animation)
+
+		fireAnimation, err := gfx.AnimationFromGIF(bytes.NewReader(fireGif))
+		if err != nil {
+			log.Error().Err(err).Msg("could not load fire animation")
+			return nil
+		}
+		fireAnimation.AnimationSpeed = 5
+		player.Animations[gfx.Fire] = fireAnimation
+
+		g.players = append(g.players, player)
 	}
 	return g
 }
@@ -157,7 +172,7 @@ func (g *Game) updatePlayer(p *player.Player) {
 		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
 	}
 
-	oldPos := p.Position
+	//oldPos := p.Position
 
 	collisionPoint := player.Vector{X: p.Position.X + playerVector.X, Y: p.Position.Y + playerVector.Y}
 	p.Collided = false
@@ -165,10 +180,10 @@ func (g *Game) updatePlayer(p *player.Player) {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
-			p.Alive = false
+			p.State = player.Dead
 		}
 	} else {
-		if p.Alive {
+		if p.State == player.Alive {
 			p.Position.X += playerVector.X
 		}
 	}
@@ -176,38 +191,32 @@ func (g *Game) updatePlayer(p *player.Player) {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
-			p.Alive = false
+			p.State = player.Dead
 		}
 	} else {
-		if p.Alive {
+		if p.State == player.Alive {
 			p.Position.Y += playerVector.Y
 		}
-	}
+		// }
 
-	if p.Collided {
-		log.Debug().
-			Str("name", p.Name).
-			Str("posOld", oldPos.String()).
-			Str("posNew", p.Position.String()).
-			Str("vector", playerVector.String()).
-			Bool("colision", p.Collided).
-			Float64("orientation", p.Orientation).
-			Msg("position update")
+		// if p.Collided {
+		// 	log.Debug().
+		// 		Str("name", p.Name).
+		// 		Str("posOld", oldPos.String()).
+		// 		Str("posNew", p.Position.String()).
+		// 		Str("vector", playerVector.String()).
+		// 		Bool("colision", p.Collided).
+		// 		Float64("orientation", p.Orientation).
+		// 		Msg("position update")
 	}
 }
 
 func (g *Game) Update(screen *ebiten.Image) error {
-	// log.Debug().Int("tick", g.tick).Msg("")
-	// if g.tick%30 == 0 {
-	for _, player := range g.players {
-		if player.Alive {
-			g.updatePlayer(player)
+	for _, p := range g.players {
+		if p.State == player.Alive {
+			g.updatePlayer(p)
 		}
 	}
-	// 	g.tick = 1
-	// } else {
-	// 	g.tick++
-	// }
 	return nil
 }
 
@@ -243,10 +252,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// }
 
 	// ======== Draw Player =========
-	for _, player := range g.players {
+	for _, p := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
-		playerOp = RotateImgOpts(player.Sprite, playerOp, int(player.Orientation))
-		playerOp.ColorM.Scale(player.Color.R, player.Color.G, player.Color.B, player.Color.Alpha)
+		playerOp = RotateImgOpts(p.Sprite, playerOp, int(p.Orientation))
+		playerOp.ColorM.Scale(p.Color.R, p.Color.G, p.Color.B, p.Color.Alpha)
 
 		// // Player.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
 		// // Here is an edge case when the Camera is bigger than the map, stuff breaks
@@ -254,11 +263,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		//playerProjectedY := int(float64(player.Position.Y-g.arenaMap.CameraPosition.Y)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.Y)/2)
 
 		// // to move the image
-		playerOp.GeoM.Translate(player.Position.X-float64(player.Sprite.Bounds().Dx()/2), player.Position.Y-float64(player.Sprite.Bounds().Dy()/2))
+		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 
-		if err := g.screenBuffer.DrawImage(player.Sprite, &playerOp); err != nil {
+		if err := g.screenBuffer.DrawImage(p.Sprite, &playerOp); err != nil {
 			log.Error().Err(err).Msg("failed drawing player sprite")
 			return
+		}
+		if p.State == player.Dead {
+			fireOp := ebiten.DrawImageOptions{}
+			fireOp.GeoM.Translate(p.Position.X-float64(p.Animations[gfx.Fire].Width/2), p.Position.Y-float64(p.Animations[gfx.Fire].Height/2))
+			if err := g.screenBuffer.DrawImage(p.Animations[gfx.Fire].GetFrame(), &fireOp); err != nil {
+				log.Error().Err(err).Msg("failed drawing player sprite")
+				return
+			}
 		}
 		//log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
 	}
