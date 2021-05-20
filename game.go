@@ -47,7 +47,8 @@ func (g *Game) Init() (err error) {
 	// to scale the imageplayer
 	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
 	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
-	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2), float64(eimg.Bounds().Dy()/2))
+	playerOp.GeoM.Rotate(90 * math.Pi / 180)
+	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
 
 	playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
 	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
@@ -63,7 +64,7 @@ func (g *Game) Init() (err error) {
 		Energy:      100,
 		MaxEnergy:   100,
 		Speed:       10,
-		Orientation: 45,
+		Orientation: 0,
 		Sprite:      playerSprite,
 		ColisionBounds: CollisionBox{
 			Min: Vector{0, 0},
@@ -190,7 +191,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			log.Error().Err(err).Msg("failed drawing player sprite")
 			return
 		}
-		log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
+		//log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
 	}
 
 	// ======== Screenbuffer ========
