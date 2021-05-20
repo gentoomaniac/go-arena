@@ -25,7 +25,7 @@ Specify the compiled bots with `-b` parameter:
 
 ## write your own bot
 
-Check out the code for [TestBot](bots/testbot.go).
+Check out the code for [TestBot](bots/testbot/testbot.go).
 
 To compile run:
 
