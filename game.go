@@ -107,13 +107,13 @@ func (g *Game) WithBots(bots []string) *Game {
 
 		switch index % 4 {
 		case 0:
-			color = &player.Color{R: 1, G: .5, B: .5, Alpha: 1}
+			color = &player.Color{R: 1, G: .7, B: .7, Alpha: 1}
 		case 1:
-			color = &player.Color{R: 1, G: 1, B: .5, Alpha: 1}
+			color = &player.Color{R: 1, G: 1, B: .7, Alpha: 1}
 		case 2:
-			color = &player.Color{R: .5, G: 1, B: .5, Alpha: 1}
+			color = &player.Color{R: .7, G: 1, B: .7, Alpha: 1}
 		case 3:
-			color = &player.Color{R: .5, G: .5, B: 1, Alpha: 1}
+			color = &player.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
 		log.Debug().Str("playerColor", color.String()).Msg("")
 		g.players = append(g.players, &player.Player{
