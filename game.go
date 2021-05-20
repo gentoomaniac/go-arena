@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"image/png"
 	"math"
+	"plugin"
 
 	_ "embed"
 
 	"github.com/gentoomaniac/ebitmx"
+	"github.com/gentoomaniac/go-arena/player"
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 	"github.com/rs/zerolog/log"
@@ -22,8 +24,7 @@ type Game struct {
 	arenaMap      *ebitmx.TmxMap
 	scalingFactor float64
 	screenBuffer  *ebiten.Image
-	players       []*Player
-	tick          int
+	players       []*player.Player
 }
 
 //go:embed tank.png
@@ -32,47 +33,9 @@ var tankImage []byte
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
 	g.screenBuffer, err = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight, ebiten.FilterDefault)
-	img, err := png.Decode(bytes.NewReader(tankImage))
 	if err != nil {
 		return
 	}
-	eimg, err := ebiten.NewImageFromImage(img, ebiten.FilterDefault)
-	if err != nil {
-		return
-	}
-	log.Debug().Msgf("eimage: %s", eimg.Bounds())
-
-	scalingFactor := 4.0
-	playerOp := &ebiten.DrawImageOptions{}
-	// to scale the imageplayer
-	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
-	playerOp.GeoM.Rotate(90 * math.Pi / 180)
-	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
-
-	playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
-	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
-	if err != nil {
-		return
-	}
-	playerSprite.DrawImage(eimg, playerOp)
-	g.players = append(g.players, &Player{
-		Name:        "TestBot",
-		Position:    Vector{X: 1000, Y: 1000},
-		Health:      100,
-		MaxHealth:   100,
-		Energy:      100,
-		MaxEnergy:   100,
-		Speed:       10,
-		Orientation: 0,
-		Sprite:      playerSprite,
-		ColisionBounds: CollisionBox{
-			Min: Vector{0, 0},
-			Max: Vector{float64(playerSprite.Bounds().Dx()), float64(playerSprite.Bounds().Dy())},
-		},
-		Collided: false,
-		AI:       &TestAI{},
-	})
 	return
 }
 
@@ -86,8 +49,70 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 	return g
 }
 
-func (g *Game) updatePlayer(p *Player) {
-	output := p.AI.Compute(AIInput{
+func (g *Game) WithBots(bots []string) *Game {
+	img, err := png.Decode(bytes.NewReader(tankImage))
+	if err != nil {
+		return nil
+	}
+	eimg, err := ebiten.NewImageFromImage(img, ebiten.FilterDefault)
+	if err != nil {
+		return nil
+	}
+	log.Debug().Msgf("eimage: %s", eimg.Bounds())
+
+	scalingFactor := 4.0
+	playerOp := &ebiten.DrawImageOptions{}
+	// to scale the imageplayer
+	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
+	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
+	playerOp.GeoM.Rotate(90 * math.Pi / 180)
+	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
+
+	for _, botModulePath := range bots {
+		botPlugin, err := plugin.Open(botModulePath)
+		if err != nil {
+			log.Error().Err(err).Msg("failed loading bot")
+			return nil
+		}
+		botObj, err := botPlugin.Lookup("Bot")
+		if err != nil {
+			log.Error().Err(err).Msg("no object called 'Bot' found")
+			return nil
+		}
+		ai, ok := botObj.(player.AI)
+		if !ok {
+			log.Error().Err(err).Msg("bot object doesn't implement the AI interface")
+			return nil
+		}
+		playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
+		log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
+		if err != nil {
+			return nil
+		}
+		playerSprite.DrawImage(eimg, playerOp)
+		g.players = append(g.players, &player.Player{
+			Name:        ai.Name(),
+			Position:    player.Vector{X: 1000, Y: 1000},
+			Health:      100,
+			MaxHealth:   100,
+			Energy:      100,
+			MaxEnergy:   100,
+			Speed:       10,
+			Orientation: 0,
+			Sprite:      playerSprite,
+			ColisionBounds: player.CollisionBox{
+				Min: player.Vector{X: 0, Y: 0},
+				Max: player.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
+			},
+			Collided: false,
+			AI:       ai,
+		})
+	}
+	return g
+}
+
+func (g *Game) updatePlayer(p *player.Player) {
+	output := p.AI.Compute(player.AIInput{
 		Position:     p.Position,
 		Speed:        p.Speed,
 		CurrentSpeed: p.CurrentSpeed,
@@ -99,21 +124,21 @@ func (g *Game) updatePlayer(p *Player) {
 	p.Speed = output.Speed
 	p.Orientation = p.Orientation + output.OrientationChange
 
-	playerVector := Vector{
+	playerVector := player.Vector{
 		X: float64(p.Speed) * math.Cos(p.Orientation*math.Pi/180),
 		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
 	}
 
 	oldPos := p.Position
 
-	collisionPoint := Vector{p.Position.X + playerVector.X, p.Position.Y + playerVector.Y}
+	collisionPoint := player.Vector{p.Position.X + playerVector.X, p.Position.Y + playerVector.Y}
 	p.Collided = false
-	if int(collisionPoint.X) < 0+p.hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.hitbox.Dx() {
+	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
 		p.Collided = true
 	} else {
 		p.Position.X += playerVector.X
 	}
-	if int(collisionPoint.Y) < 0+p.hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.hitbox.Dy() {
+	if int(collisionPoint.Y) < 0+p.Hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.Hitbox.Dy() {
 		p.Collided = true
 	} else {
 		p.Position.Y += playerVector.Y

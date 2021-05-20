@@ -13,6 +13,8 @@ var (
 var cli struct {
 	logging.LoggingConfig
 
+	Bot []string `short:"b" help:"add another bot with this filename to the arena" required:""`
+
 	Version kong.VersionFlag `short:"v" help:"Display version."`
 }
 
@@ -23,7 +25,7 @@ func main() {
 	logging.Setup(&cli.LoggingConfig)
 
 	log.Info().Msg("Starting game")
-	run()
+	run(cli.Bot)
 
 	ctx.Exit(0)
 }
