@@ -16,8 +16,40 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	ColisionDamage = 5 // how much health does a player loose on colisions
+)
+
 func NewGame() *Game {
 	return &Game{}
+}
+
+func getPlayerSprite() (*ebiten.Image, error) {
+	img, err := png.Decode(bytes.NewReader(tankImage))
+	if err != nil {
+		return nil, err
+	}
+	eimg, err := ebiten.NewImageFromImage(img, ebiten.FilterDefault)
+	if err != nil {
+		return nil, err
+	}
+
+	scalingFactor := 4.0
+	playerOp := &ebiten.DrawImageOptions{}
+	// to scale the imageplayer
+	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
+	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
+	playerOp.GeoM.Rotate(90 * math.Pi / 180)
+	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
+
+	playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
+	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
+	if err != nil {
+		return nil, err
+	}
+	playerSprite.DrawImage(eimg, playerOp)
+
+	return playerSprite, nil
 }
 
 type Game struct {
@@ -50,25 +82,8 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 }
 
 func (g *Game) WithBots(bots []string) *Game {
-	img, err := png.Decode(bytes.NewReader(tankImage))
-	if err != nil {
-		return nil
-	}
-	eimg, err := ebiten.NewImageFromImage(img, ebiten.FilterDefault)
-	if err != nil {
-		return nil
-	}
-	log.Debug().Msgf("eimage: %s", eimg.Bounds())
-
-	scalingFactor := 4.0
-	playerOp := &ebiten.DrawImageOptions{}
-	// to scale the imageplayer
-	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
-	playerOp.GeoM.Rotate(90 * math.Pi / 180)
-	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
-
-	for _, botModulePath := range bots {
+	var color *player.Color
+	for index, botModulePath := range bots {
 		botPlugin, err := plugin.Open(botModulePath)
 		if err != nil {
 			log.Error().Err(err).Msg("failed loading bot")
@@ -84,15 +99,27 @@ func (g *Game) WithBots(bots []string) *Game {
 			log.Error().Err(err).Msg("bot object doesn't implement the AI interface")
 			return nil
 		}
-		playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
-		log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
+
+		playerSprite, err := getPlayerSprite()
 		if err != nil {
 			return nil
 		}
-		playerSprite.DrawImage(eimg, playerOp)
+
+		switch index % 4 {
+		case 0:
+			color = &player.Color{R: 1, G: .5, B: .5, Alpha: 1}
+		case 1:
+			color = &player.Color{R: 1, G: 1, B: .5, Alpha: 1}
+		case 2:
+			color = &player.Color{R: .5, G: 1, B: .5, Alpha: 1}
+		case 3:
+			color = &player.Color{R: .5, G: .5, B: 1, Alpha: 1}
+		}
+		log.Debug().Str("playerColor", color.String()).Msg("")
 		g.players = append(g.players, &player.Player{
 			Name:        ai.Name(),
-			Position:    player.Vector{X: 1000, Y: 1000},
+			Alive:       true,
+			Position:    player.Vector{X: 1000 * float64(index), Y: 1000 * float64(index)},
 			Health:      100,
 			MaxHealth:   100,
 			Energy:      100,
@@ -100,6 +127,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			Speed:       10,
 			Orientation: 0,
 			Sprite:      playerSprite,
+			Color:       color,
 			ColisionBounds: player.CollisionBox{
 				Min: player.Vector{X: 0, Y: 0},
 				Max: player.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
@@ -131,17 +159,29 @@ func (g *Game) updatePlayer(p *player.Player) {
 
 	oldPos := p.Position
 
-	collisionPoint := player.Vector{p.Position.X + playerVector.X, p.Position.Y + playerVector.Y}
+	collisionPoint := player.Vector{X: p.Position.X + playerVector.X, Y: p.Position.Y + playerVector.Y}
 	p.Collided = false
 	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
 		p.Collided = true
+		p.Health -= ColisionDamage
+		if p.Health <= 0 {
+			p.Alive = false
+		}
 	} else {
-		p.Position.X += playerVector.X
+		if p.Alive {
+			p.Position.X += playerVector.X
+		}
 	}
 	if int(collisionPoint.Y) < 0+p.Hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.Hitbox.Dy() {
 		p.Collided = true
+		p.Health -= ColisionDamage
+		if p.Health <= 0 {
+			p.Alive = false
+		}
 	} else {
-		p.Position.Y += playerVector.Y
+		if p.Alive {
+			p.Position.Y += playerVector.Y
+		}
 	}
 
 	if p.Collided {
@@ -160,7 +200,9 @@ func (g *Game) Update(screen *ebiten.Image) error {
 	// log.Debug().Int("tick", g.tick).Msg("")
 	// if g.tick%30 == 0 {
 	for _, player := range g.players {
-		g.updatePlayer(player)
+		if player.Alive {
+			g.updatePlayer(player)
+		}
 	}
 	// 	g.tick = 1
 	// } else {
@@ -204,6 +246,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, player := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
 		playerOp = RotateImgOpts(player.Sprite, playerOp, int(player.Orientation))
+		playerOp.ColorM.Scale(player.Color.R, player.Color.G, player.Color.B, player.Color.Alpha)
+
 		// // Player.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
 		// // Here is an edge case when the Camera is bigger than the map, stuff breaks
 		//playerProjectedX := int(float64(player.Position.X-g.arenaMap.CameraPosition.X)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.X)/2)
