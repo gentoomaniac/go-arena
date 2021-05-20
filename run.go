@@ -24,7 +24,7 @@ func run() {
 
 	startPosition := image.Point{0, 0}
 
-	tmxMap.CameraBounds = image.Rect(0, 0, 64000, 64000)
+	tmxMap.CameraBounds = image.Rect(0, 0, 6400, 6400)
 	tmxMap.CameraPosition = startPosition
 	log.Debug().Int("width", tmxMap.PixelWidth).Int("height", tmxMap.PixelHeight).Msg("map dimensions")
 

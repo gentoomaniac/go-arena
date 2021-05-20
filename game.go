@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image"
 	"image/png"
 	"math"
 
@@ -41,6 +40,7 @@ func (g *Game) Init() (err error) {
 	if err != nil {
 		return
 	}
+	log.Debug().Msgf("eimage: %s", eimg.Bounds())
 
 	scalingFactor := 4.0
 	playerOp := &ebiten.DrawImageOptions{}
@@ -50,23 +50,27 @@ func (g *Game) Init() (err error) {
 	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2), float64(eimg.Bounds().Dy()/2))
 
 	playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
-	log.Debug().Msgf("%s", playerSprite.Bounds())
+	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
 	if err != nil {
 		return
 	}
 	playerSprite.DrawImage(eimg, playerOp)
 	g.players = append(g.players, &Player{
-		Name:           "TestBot",
-		Position:       image.Point{X: 1000, Y: 1000},
-		Health:         100,
-		MaxHealth:      100,
-		Energy:         100,
-		MaxEnergy:      100,
-		Speed:          10,
-		Orientation:    0,
-		Sprite:         playerSprite,
-		ColisionBounds: image.Rect(0, 0, playerSprite.Bounds().Dx(), playerSprite.Bounds().Dy()),
-		AI:             &TestAI{},
+		Name:        "TestBot",
+		Position:    Vector{X: 1000, Y: 1000},
+		Health:      100,
+		MaxHealth:   100,
+		Energy:      100,
+		MaxEnergy:   100,
+		Speed:       10,
+		Orientation: 45,
+		Sprite:      playerSprite,
+		ColisionBounds: CollisionBox{
+			Min: Vector{0, 0},
+			Max: Vector{float64(playerSprite.Bounds().Dx()), float64(playerSprite.Bounds().Dy())},
+		},
+		Collided: false,
+		AI:       &TestAI{},
 	})
 	return
 }
@@ -87,48 +91,59 @@ func (g *Game) updatePlayer(p *Player) {
 		Speed:        p.Speed,
 		CurrentSpeed: p.CurrentSpeed,
 		Orientation:  p.Orientation,
+		Collided:     p.Collided,
 	})
 	//jsonOutput, _ := json.Marshal(output)
 	//log.Debug().RawJSON("output", jsonOutput).Msg("bot Compute() result")
 	p.Speed = output.Speed
-	p.Orientation = (p.Orientation + output.Orientation) % 360
-	log.Debug().Int("orientation", p.Orientation).Msg("")
+	p.Orientation = p.Orientation + output.OrientationChange
 
-	var playerVector image.Point
-	if p.Speed > 0 {
-		playerVector = image.Point{
-			X: int(float64(p.Speed) * math.Cos(float64(p.Orientation))),
-			Y: int(float64(p.Speed) * math.Sin(float64(p.Orientation))),
-		}
+	playerVector := Vector{
+		X: float64(p.Speed) * math.Cos(p.Orientation*math.Pi/180),
+		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
 	}
 
-	collisionPointX := image.Point{p.Position.X + playerVector.X, p.Position.Y}
-	collisionPointY := image.Point{p.Position.X, p.Position.Y + playerVector.Y}
-	collisionPoint := image.Point{p.Position.X + playerVector.X, p.Position.Y + playerVector.Y}
-	if !g.arenaMap.CheckColisionPoint(collisionPoint) {
+	oldPos := p.Position
+
+	collisionPoint := Vector{p.Position.X + playerVector.X, p.Position.Y + playerVector.Y}
+	p.Collided = false
+	if int(collisionPoint.X) < 0+p.hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.hitbox.Dx() {
+		p.Collided = true
+	} else {
 		p.Position.X += playerVector.X
-		p.Position.Y += playerVector.Y
-	} else if !g.arenaMap.CheckColisionPoint(collisionPointX) {
-		p.Position.X += playerVector.X
-	} else if !g.arenaMap.CheckColisionPoint(collisionPointY) {
+	}
+	if int(collisionPoint.Y) < 0+p.hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.hitbox.Dy() {
+		p.Collided = true
+	} else {
 		p.Position.Y += playerVector.Y
 	}
-	//log.Debug().Str("name", p.Name).Str("oldPos", p.Position.String()).Str("newPos", newPosition.String()).Msg("position update")
+
+	if p.Collided {
+		log.Debug().
+			Str("name", p.Name).
+			Str("posOld", oldPos.String()).
+			Str("posNew", p.Position.String()).
+			Str("vector", playerVector.String()).
+			Bool("colision", p.Collided).
+			Float64("orientation", p.Orientation).
+			Msg("position update")
+	}
 }
 
 func (g *Game) Update(screen *ebiten.Image) error {
-	if g.tick%10 == 0 {
-		for _, player := range g.players {
-			g.updatePlayer(player)
-		}
-		g.tick = 1
-	} else {
-		g.tick++
+	// log.Debug().Int("tick", g.tick).Msg("")
+	// if g.tick%30 == 0 {
+	for _, player := range g.players {
+		g.updatePlayer(player)
 	}
+	// 	g.tick = 1
+	// } else {
+	// 	g.tick++
+	// }
 	return nil
 }
 
-func RotateImgOpts(img *ebiten.Image, op *ebiten.DrawImageOptions, degrees int) *ebiten.DrawImageOptions {
+func RotateImgOpts(img *ebiten.Image, op ebiten.DrawImageOptions, degrees int) ebiten.DrawImageOptions {
 	// Move the image's center to the screen's upper-left corner.
 	// This is a preparation for rotating. When geometry matrices are applied,
 	// the origin point is the upper-left corner.
@@ -152,36 +167,37 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	collisionOp := &ebiten.DrawImageOptions{}
-	collisionOp.ColorM.Scale(1, 0, 0, .75)
-	err := g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), collisionOp)
-	if err != nil {
-		log.Debug().Err(err).Msg("rendering collisionmap failed")
-	}
+	// collisionOp := &ebiten.DrawImageOptions{}
+	// collisionOp.ColorM.Scale(1, 0, 0, .75)
+	// err := g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), collisionOp)
+	// if err != nil {
+	// 	log.Debug().Err(err).Msg("rendering collisionmap failed")
+	// }
 
 	// ======== Draw Player =========
 	for _, player := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
-		//RotateImgOpts(player.Sprite, &playerOp, int(player.Orientation))
+		playerOp = RotateImgOpts(player.Sprite, playerOp, int(player.Orientation))
 		// // Player.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
 		// // Here is an edge case when the Camera is bigger than the map, stuff breaks
 		//playerProjectedX := int(float64(player.Position.X-g.arenaMap.CameraPosition.X)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.X)/2)
 		//playerProjectedY := int(float64(player.Position.Y-g.arenaMap.CameraPosition.Y)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.Y)/2)
 
 		// // to move the image
-		playerOp.GeoM.Translate((float64(player.Position.X) - float64(player.Sprite.Bounds().Dx()/2)), (float64(player.Position.Y - player.Sprite.Bounds().Dy()/2)))
+		playerOp.GeoM.Translate(player.Position.X-float64(player.Sprite.Bounds().Dx()/2), player.Position.Y-float64(player.Sprite.Bounds().Dy()/2))
 
-		if err = g.screenBuffer.DrawImage(player.Sprite, &playerOp); err != nil {
+		if err := g.screenBuffer.DrawImage(player.Sprite, &playerOp); err != nil {
 			log.Error().Err(err).Msg("failed drawing player sprite")
 			return
 		}
+		log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
 	}
 
 	// ======== Screenbuffer ========
 
 	scaledScreenOp := &ebiten.DrawImageOptions{}
 	scaledScreenOp.GeoM.Scale(g.scalingFactor, g.scalingFactor)
-	err = screen.DrawImage(g.screenBuffer, scaledScreenOp)
+	err := screen.DrawImage(g.screenBuffer, scaledScreenOp)
 	if err != nil {
 		log.Debug().Err(err).Msg("rendering screen failed")
 	}
