@@ -1,4 +1,4 @@
-package player
+package entities
 
 type AIInput struct {
 	Position     Vector
@@ -6,11 +6,13 @@ type AIInput struct {
 	CurrentSpeed int
 	Orientation  float64
 	Collided     bool
+	CannonReady  bool
 }
 
 type AIOutput struct {
 	Speed             int     `json:"speed"`
 	OrientationChange float64 `json:"orientationChange"`
+	Shoot             bool    `json:"shoot"`
 }
 
 type AI interface {

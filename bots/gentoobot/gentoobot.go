@@ -3,19 +3,24 @@ package main
 import (
 	"math/rand"
 
-	"github.com/gentoomaniac/go-arena/player"
+	"github.com/gentoomaniac/go-arena/entities"
 )
 
 type GentooBot struct {
 }
 
-func (g *GentooBot) Compute(input player.AIInput) player.AIOutput {
+func (g *GentooBot) Compute(input entities.AIInput) entities.AIOutput {
+	shoot := false
 	orientation := 0.2
 	if input.Collided {
 		orientation = 10 + float64(rand.Int()%5)
 	}
 
-	return player.AIOutput{Speed: 20, OrientationChange: orientation}
+	if input.CannonReady {
+		shoot = true
+	}
+
+	return entities.AIOutput{Speed: 20, OrientationChange: orientation, Shoot: shoot}
 }
 
 func (g *GentooBot) Name() string {

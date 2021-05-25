@@ -3,18 +3,18 @@ package main
 import (
 	"math/rand"
 
-	"github.com/gentoomaniac/go-arena/player"
+	"github.com/gentoomaniac/go-arena/entities"
 )
 
 type TestBot struct{}
 
-func (t *TestBot) Compute(input player.AIInput) player.AIOutput {
+func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 	orientation := -0.3
 	if input.Collided {
 		orientation = -10 - float64(rand.Int()%10)
 	}
 
-	return player.AIOutput{Speed: 10, OrientationChange: orientation}
+	return entities.AIOutput{Speed: 10, OrientationChange: orientation}
 }
 
 func (t TestBot) Name() string {

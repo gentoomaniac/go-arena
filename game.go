@@ -10,8 +10,8 @@ import (
 	_ "embed"
 
 	"github.com/gentoomaniac/ebitmx"
+	"github.com/gentoomaniac/go-arena/entities"
 	"github.com/gentoomaniac/go-arena/gfx"
-	"github.com/gentoomaniac/go-arena/player"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/rs/zerolog/log"
@@ -19,6 +19,7 @@ import (
 
 var (
 	ColisionDamage = 5 // how much health does a player loose on colisions
+	CannonCooldown = 60
 )
 
 func NewGame() *Game {
@@ -55,7 +56,8 @@ type Game struct {
 	arenaMap      *ebitmx.TmxMap
 	scalingFactor float64
 	screenBuffer  *ebiten.Image
-	players       []*player.Player
+	players       []*entities.Player
+	shells        []*entities.Shell
 }
 
 func (g *Game) Init() (err error) {
@@ -78,7 +80,7 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 var fireGif []byte
 
 func (g *Game) WithBots(bots []string) *Game {
-	var color *player.Color
+	var color *entities.Color
 	for index, botModulePath := range bots {
 		botPlugin, err := plugin.Open(botModulePath)
 		if err != nil {
@@ -90,7 +92,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			log.Error().Err(err).Msg("no object called 'Bot' found")
 			return nil
 		}
-		ai, ok := botObj.(player.AI)
+		ai, ok := botObj.(entities.AI)
 		if !ok {
 			log.Error().Err(err).Msg("bot object doesn't implement the AI interface")
 			return nil
@@ -103,18 +105,18 @@ func (g *Game) WithBots(bots []string) *Game {
 
 		switch index % 4 {
 		case 0:
-			color = &player.Color{R: 1, G: .7, B: .7, Alpha: 1}
+			color = &entities.Color{R: 1, G: .7, B: .7, Alpha: 1}
 		case 1:
-			color = &player.Color{R: 1, G: 1, B: .7, Alpha: 1}
+			color = &entities.Color{R: 1, G: 1, B: .7, Alpha: 1}
 		case 2:
-			color = &player.Color{R: .7, G: 1, B: .7, Alpha: 1}
+			color = &entities.Color{R: .7, G: 1, B: .7, Alpha: 1}
 		case 3:
-			color = &player.Color{R: .7, G: .7, B: 1, Alpha: 1}
+			color = &entities.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
-		player := &player.Player{
+		player := &entities.Player{
 			Name:        ai.Name(),
-			State:       player.Alive,
-			Position:    player.Vector{X: 1000 * float64(index), Y: 1000 * float64(index)},
+			State:       entities.Alive,
+			Position:    entities.Vector{X: 1000 * float64(index), Y: 1000 * float64(index)},
 			Health:      100,
 			MaxHealth:   100,
 			Energy:      100,
@@ -124,9 +126,9 @@ func (g *Game) WithBots(bots []string) *Game {
 			Orientation: 0,
 			Sprite:      playerSprite,
 			Color:       color,
-			ColisionBounds: player.CollisionBox{
-				Min: player.Vector{X: 0, Y: 0},
-				Max: player.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
+			ColisionBounds: entities.CollisionBox{
+				Min: entities.Vector{X: 0, Y: 0},
+				Max: entities.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
 			},
 			Collided: false,
 			AI:       ai,
@@ -146,36 +148,53 @@ func (g *Game) WithBots(bots []string) *Game {
 	return g
 }
 
-func (g *Game) updatePlayer(p *player.Player) {
-	output := p.AI.Compute(player.AIInput{
+func (g *Game) updatePlayer(p *entities.Player) {
+	output := p.AI.Compute(entities.AIInput{
 		Position:     p.Position,
 		Speed:        p.Speed,
 		CurrentSpeed: p.CurrentSpeed,
 		Orientation:  p.Orientation,
 		Collided:     p.Collided,
+		CannonReady:  p.CannonCooldown <= 0,
 	})
 	//jsonOutput, _ := json.Marshal(output)
 	//log.Debug().RawJSON("output", jsonOutput).Msg("bot Compute() result")
 	p.Speed = output.Speed
 	p.Orientation = p.Orientation + output.OrientationChange
+	if p.CannonCooldown > 0 {
+		p.CannonCooldown--
+	} else {
+		if output.Shoot {
+			p.CannonCooldown = CannonCooldown
+			newShell, err := entities.NewShell()
+			newShell.SetOrientation(p.Orientation)
+			newShell.SetPosition(p.Position)
+			newShell.SetSpeed(30)
+			if err != nil {
+				log.Error().Err(err).Msg("failed adding shell")
+			}
+			g.shells = append(g.shells, newShell)
+			log.Debug().Str("tank", p.Name).Msg("tank fired")
+		}
+	}
 
-	playerVector := player.Vector{
+	playerVector := entities.Vector{
 		X: float64(p.Speed) * math.Cos(p.Orientation*math.Pi/180),
 		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
 	}
 
 	//oldPos := p.Position
 
-	collisionPoint := player.Vector{X: p.Position.X + playerVector.X, Y: p.Position.Y + playerVector.Y}
+	collisionPoint := entities.Vector{X: p.Position.X + playerVector.X, Y: p.Position.Y + playerVector.Y}
 	p.Collided = false
 	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
-			p.State = player.Dead
+			p.State = entities.Dead
 		}
 	} else {
-		if p.State == player.Alive {
+		if p.State == entities.Alive {
 			p.Position.X += playerVector.X
 		}
 	}
@@ -183,31 +202,48 @@ func (g *Game) updatePlayer(p *player.Player) {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
-			p.State = player.Dead
+			p.State = entities.Dead
 		}
 	} else {
-		if p.State == player.Alive {
+		if p.State == entities.Alive {
 			p.Position.Y += playerVector.Y
 		}
-		// }
-
-		// if p.Collided {
-		// 	log.Debug().
-		// 		Str("name", p.Name).
-		// 		Str("posOld", oldPos.String()).
-		// 		Str("posNew", p.Position.String()).
-		// 		Str("vector", playerVector.String()).
-		// 		Bool("colision", p.Collided).
-		// 		Float64("orientation", p.Orientation).
-		// 		Msg("position update")
 	}
+}
+
+func remove(s []*entities.Shell, i int) []*entities.Shell {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }
 
 func (g *Game) Update() error {
 	for _, p := range g.players {
-		if p.State == player.Alive {
+		if p.State == entities.Alive {
 			g.updatePlayer(p)
 		}
+	}
+
+	for i, s := range g.shells {
+		shellVector := entities.Vector{
+			X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
+			Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
+		}
+
+		position := s.Position()
+		collisionPoint := entities.Vector{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
+		if collisionPoint.X < 0+s.CollisionBox().Max.X || collisionPoint.X > float64(g.arenaMap.PixelWidth)-s.CollisionBox().Max.X {
+			g.shells = remove(g.shells, i)
+			continue
+		} else {
+			position.X += shellVector.X
+		}
+		if collisionPoint.Y < 0+s.CollisionBox().Max.Y || collisionPoint.Y > float64(g.arenaMap.PixelHeight)-s.CollisionBox().Max.Y {
+			g.shells = remove(g.shells, i)
+			continue
+		} else {
+			position.Y += shellVector.Y
+		}
+		s.SetPosition(position)
 	}
 	return nil
 }
@@ -246,22 +282,33 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		playerOp = RotateImgOpts(p.Sprite, playerOp, int(p.Orientation))
 		playerOp.ColorM.Scale(p.Color.R, p.Color.G, p.Color.B, p.Color.Alpha)
 
-		// // Player.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
+		// // entities.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
 		// // Here is an edge case when the Camera is bigger than the map, stuff breaks
-		//playerProjectedX := int(float64(player.Position.X-g.arenaMap.CameraPosition.X)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.X)/2)
-		//playerProjectedY := int(float64(player.Position.Y-g.arenaMap.CameraPosition.Y)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.Y)/2)
+		//playerProjectedX := int(float64(entities.Position.X-g.arenaMap.CameraPosition.X)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.X)/2)
+		//playerProjectedY := int(float64(entities.Position.Y-g.arenaMap.CameraPosition.Y)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.Y)/2)
 
 		// // to move the image
 		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 
 		g.screenBuffer.DrawImage(p.Sprite, &playerOp)
 
-		if p.State == player.Dead {
+		if p.State == entities.Dead {
 			fireOp := ebiten.DrawImageOptions{}
 			fireOp.GeoM.Translate(p.Position.X-float64(p.Animations[gfx.Fire].Width/2), p.Position.Y-float64(p.Animations[gfx.Fire].Height/2))
 			g.screenBuffer.DrawImage(p.Animations[gfx.Fire].GetFrame(), &fireOp)
 		}
-		//log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
+		//log.Debug().Str("name", entities.Name).Str("pos", entities.Position.String()).Float64("orientation", entities.Orientation).Msg("draw player")
+	}
+
+	// ======== Draw Shells =========
+	for _, s := range g.shells {
+		shellOp := ebiten.DrawImageOptions{}
+		shellOp = RotateImgOpts(s.Sprite(), shellOp, int(s.Orientation()))
+
+		// // to move the image
+		shellOp.GeoM.Translate(s.Position().X-float64(s.Sprite().Bounds().Dx()/2), s.Position().Y-float64(s.Sprite().Bounds().Dy()/2))
+
+		g.screenBuffer.DrawImage(s.Sprite(), &shellOp)
 	}
 
 	// ======== Screenbuffer ========
