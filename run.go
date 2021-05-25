@@ -4,7 +4,7 @@ import (
 	"image"
 
 	"github.com/gentoomaniac/ebitmx"
-	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/rs/zerolog/log"
 )
 

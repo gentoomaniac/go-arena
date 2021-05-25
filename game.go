@@ -12,8 +12,8 @@ import (
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/player"
-	"github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -33,10 +33,7 @@ func getPlayerSprite() (*ebiten.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	eimg, err := ebiten.NewImageFromImage(img, ebiten.FilterDefault)
-	if err != nil {
-		return nil, err
-	}
+	eimg := ebiten.NewImageFromImage(img)
 
 	scalingFactor := 4.0
 	playerOp := &ebiten.DrawImageOptions{}
@@ -46,11 +43,9 @@ func getPlayerSprite() (*ebiten.Image, error) {
 	playerOp.GeoM.Rotate(90 * math.Pi / 180)
 	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
 
-	playerSprite, err := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor), ebiten.FilterDefault)
+	playerSprite := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor))
 	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
-	if err != nil {
-		return nil, err
-	}
+
 	playerSprite.DrawImage(eimg, playerOp)
 
 	return playerSprite, nil
@@ -65,10 +60,7 @@ type Game struct {
 
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
-	g.screenBuffer, err = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight, ebiten.FilterDefault)
-	if err != nil {
-		return
-	}
+	g.screenBuffer = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight)
 	return
 }
 
@@ -211,7 +203,7 @@ func (g *Game) updatePlayer(p *player.Player) {
 	}
 }
 
-func (g *Game) Update(screen *ebiten.Image) error {
+func (g *Game) Update() error {
 	for _, p := range g.players {
 		if p.State == player.Alive {
 			g.updatePlayer(p)
@@ -238,10 +230,7 @@ func RotateImgOpts(img *ebiten.Image, op ebiten.DrawImageOptions, degrees int) e
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	for _, layer := range g.arenaMap.Layers {
-		err := g.screenBuffer.DrawImage(layer.Render(g.arenaMap, g.scalingFactor, false), &ebiten.DrawImageOptions{})
-		if err != nil {
-			log.Error().Err(err).Str("layer", layer.Name).Msg("rendering layer failed")
-		}
+		g.screenBuffer.DrawImage(layer.Render(g.arenaMap, g.scalingFactor, false), &ebiten.DrawImageOptions{})
 	}
 
 	// collisionOp := &ebiten.DrawImageOptions{}
@@ -265,17 +254,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// // to move the image
 		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 
-		if err := g.screenBuffer.DrawImage(p.Sprite, &playerOp); err != nil {
-			log.Error().Err(err).Msg("failed drawing player sprite")
-			return
-		}
+		g.screenBuffer.DrawImage(p.Sprite, &playerOp)
+
 		if p.State == player.Dead {
 			fireOp := ebiten.DrawImageOptions{}
 			fireOp.GeoM.Translate(p.Position.X-float64(p.Animations[gfx.Fire].Width/2), p.Position.Y-float64(p.Animations[gfx.Fire].Height/2))
-			if err := g.screenBuffer.DrawImage(p.Animations[gfx.Fire].GetFrame(), &fireOp); err != nil {
-				log.Error().Err(err).Msg("failed drawing player sprite")
-				return
-			}
+			g.screenBuffer.DrawImage(p.Animations[gfx.Fire].GetFrame(), &fireOp)
 		}
 		//log.Debug().Str("name", player.Name).Str("pos", player.Position.String()).Float64("orientation", player.Orientation).Msg("draw player")
 	}
@@ -284,17 +268,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	scaledScreenOp := &ebiten.DrawImageOptions{}
 	scaledScreenOp.GeoM.Scale(g.scalingFactor, g.scalingFactor)
-	err := screen.DrawImage(g.screenBuffer, scaledScreenOp)
-	if err != nil {
-		log.Debug().Err(err).Msg("rendering screen failed")
-	}
+	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
 	// ======== Info ========
-	err = ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
-	if err != nil {
-		log.Debug().Err(err).Msg("writing Debug message failed")
-	}
-
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

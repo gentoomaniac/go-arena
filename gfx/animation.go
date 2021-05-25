@@ -1,11 +1,10 @@
 package gfx
 
 import (
-	"fmt"
 	"image/gif"
 	"io"
 
-	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Animation struct {
@@ -61,10 +60,7 @@ func AnimationFromGIF(r io.Reader) (*Animation, error) {
 		return nil, err
 	}
 	for _, image := range gif.Image {
-		frame, err := ebiten.NewImageFromImage(image, ebiten.FilterDefault)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't load image from gif frame: %s", err)
-		}
+		frame := ebiten.NewImageFromImage(image)
 		a.Frames = append(a.Frames, frame)
 	}
 

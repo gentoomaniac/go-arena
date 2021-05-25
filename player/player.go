@@ -5,7 +5,7 @@ import (
 	"image"
 
 	"github.com/gentoomaniac/go-arena/gfx"
-	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type State int
