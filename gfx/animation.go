@@ -46,7 +46,6 @@ func (a *Animation) GetFrame() *ebiten.Image {
 	} else {
 		a.FrameClock++
 	}
-
 	return frame
 }
 

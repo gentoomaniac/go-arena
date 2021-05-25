@@ -16,7 +16,6 @@ const (
 )
 
 func run(bots []string) {
-
 	tmxMap, error := ebitmx.LoadFromFile(mapPath)
 	if error != nil {
 		log.Fatal().Err(error).Msg("")
@@ -36,7 +35,7 @@ func run(bots []string) {
 	}
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	ebiten.SetWindowTitle("Go Arena")
+	ebiten.SetWindowTitle("go-arena")
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
