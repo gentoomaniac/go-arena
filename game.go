@@ -116,7 +116,7 @@ func (g *Game) WithBots(bots []string) *Game {
 		player := &entities.Player{
 			Name:        ai.Name(),
 			State:       entities.Alive,
-			Position:    entities.Vector{X: 1000 * float64(index), Y: 1000 * float64(index)},
+			Position:    entities.Vector{X: 1000*float64(index) + 1000, Y: 1000*float64(index) + 1000},
 			Health:      100,
 			MaxHealth:   100,
 			Energy:      100,

@@ -7,27 +7,25 @@ import (
 	_ "embed"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed shell.png
 var shellPng []byte
+var shellImage *ebiten.Image
 
-func loadSprite() (*ebiten.Image, error) {
+func init() {
 	img, err := png.Decode(bytes.NewReader(shellPng))
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("could not load shell image")
 	}
-	return ebiten.NewImageFromImage(img), nil
+
+	shellImage = ebiten.NewImageFromImage(img)
 }
 
 func NewShell() (s *Shell, err error) {
 	s = &Shell{}
-	sprite, err := loadSprite()
-	if err != nil {
-		return nil, err
-	}
-
-	s.SetSprite(sprite)
+	s.SetSprite(shellImage)
 
 	return s, nil
 }

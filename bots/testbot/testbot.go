@@ -14,7 +14,7 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 		orientation = -10 - float64(rand.Int()%10)
 	}
 
-	return entities.AIOutput{Speed: 10, OrientationChange: orientation}
+	return entities.AIOutput{Speed: 10, OrientationChange: orientation, Shoot: true}
 }
 
 func (t TestBot) Name() string {
