@@ -18,5 +18,6 @@ type AIOutput struct {
 
 type AI interface {
 	Compute(AIInput) AIOutput
+	Init()
 	Name() string
 }

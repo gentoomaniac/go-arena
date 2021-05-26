@@ -9,6 +9,8 @@ import (
 type GentooBot struct {
 }
 
+func (g *GentooBot) Init() {}
+
 func (g *GentooBot) Compute(input entities.AIInput) entities.AIOutput {
 	shoot := false
 	orientation := 0.2
