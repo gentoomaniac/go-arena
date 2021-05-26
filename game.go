@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/png"
 	"math"
+	"math/rand"
 	"plugin"
 
 	_ "embed"
@@ -125,7 +126,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			MaxEnergy:   100,
 			Speed:       10,
 			MaxSpeed:    20,
-			Orientation: 0,
+			Orientation: float64(rand.Int() % 360),
 			Sprite:      playerSprite,
 			Color:       color,
 			ColisionBounds: entities.CollisionBox{
