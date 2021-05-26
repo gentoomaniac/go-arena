@@ -160,6 +160,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				enemies = append(enemies, &entities.Enemy{
 					Distance: distance,
 					Angle:    angle,
+					State:    e.State,
 				})
 			}
 		}

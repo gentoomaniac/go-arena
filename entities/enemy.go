@@ -5,4 +5,5 @@ type Enemy struct {
 	Distance float64
 	Health   int
 	Speed    int
+	State    State
 }
