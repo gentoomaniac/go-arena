@@ -2,8 +2,9 @@ package entities
 
 type AIInput struct {
 	Position     Vector
-	Speed        int
-	CurrentSpeed int
+	CurrentSpeed float64
+	TargetSpeed  float64
+	MaxSpeed     float64
 	Orientation  float64
 	Collided     bool
 	CannonReady  bool
@@ -11,7 +12,7 @@ type AIInput struct {
 }
 
 type AIOutput struct {
-	Speed             int     `json:"speed"`
+	Speed             float64 `json:"speed"`
 	OrientationChange float64 `json:"orientationChange"`
 	Shoot             bool    `json:"shoot"`
 }

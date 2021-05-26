@@ -22,6 +22,8 @@ var (
 	ColisionDamage = 5 // how much health does a player loose on colisions
 	CannonCooldown = 60
 	ViewRange      = 2500
+	MaxSpeed       = 25.0
+	Acceleration   = 0.1
 )
 
 func NewGame() *Game {
@@ -100,6 +102,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			log.Error().Err(err).Msg("bot object doesn't implement the AI interface")
 			return nil
 		}
+		ai.Init()
 
 		playerSprite, err := getPlayerSprite()
 		if err != nil {
@@ -117,18 +120,18 @@ func (g *Game) WithBots(bots []string) *Game {
 			color = &entities.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
 		player := &entities.Player{
-			Name:        ai.Name(),
-			State:       entities.Alive,
-			Position:    entities.Vector{X: 1000*float64(index) + 1000, Y: 1000*float64(index) + 1000},
-			Health:      100,
-			MaxHealth:   100,
-			Energy:      100,
-			MaxEnergy:   100,
-			Speed:       10,
-			MaxSpeed:    20,
-			Orientation: float64(rand.Int() % 360),
-			Sprite:      playerSprite,
-			Color:       color,
+			Name:         ai.Name(),
+			State:        entities.Alive,
+			Position:     entities.Vector{X: 1000*float64(index) + 1000, Y: 1000*float64(index) + 1000},
+			Health:       100,
+			MaxHealth:    100,
+			Energy:       100,
+			MaxEnergy:    100,
+			MaxSpeed:     MaxSpeed,
+			Acceleration: Acceleration,
+			Orientation:  float64(rand.Int() % 360),
+			Sprite:       playerSprite,
+			Color:        color,
 			ColisionBounds: entities.CollisionBox{
 				Min: entities.Vector{X: 0, Y: 0},
 				Max: entities.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
@@ -168,16 +171,17 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	}
 	output := p.AI.Compute(entities.AIInput{
 		Position:     p.Position,
-		Speed:        p.Speed,
+		TargetSpeed:  p.TargetSpeed,
+		MaxSpeed:     p.MaxSpeed,
 		CurrentSpeed: p.CurrentSpeed,
 		Orientation:  p.Orientation,
 		Collided:     p.Collided,
 		CannonReady:  p.CannonCooldown <= 0,
 		Enemy:        enemies,
 	})
-	//jsonOutput, _ := json.Marshal(output)
-	//log.Debug().RawJSON("output", jsonOutput).Msg("bot Compute() result")
-	p.Speed = output.Speed
+
+	p.UpdateSpeed(output.Speed)
+
 	p.Orientation = p.Orientation + output.OrientationChange
 	if p.CannonCooldown > 0 {
 		p.CannonCooldown--
@@ -192,13 +196,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				log.Error().Err(err).Msg("failed adding shell")
 			}
 			g.shells = append(g.shells, newShell)
-			log.Debug().Str("tank", p.Name).Msg("tank fired")
 		}
 	}
 
 	p.Movement = entities.Vector{
-		X: float64(p.Speed) * math.Cos(p.Orientation*math.Pi/180),
-		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
+		X: p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180),
+		Y: p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180),
 	}
 
 	//oldPos := p.Position

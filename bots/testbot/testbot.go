@@ -8,15 +8,18 @@ import (
 
 type TestBot struct {
 	orientation float64
+	speed       float64
 }
 
 func (t *TestBot) Init() {
 	t.orientation = 0.3
+	t.speed = 5
 }
 
 func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 	shoot := false
 	orientation := t.orientation
+	speed := t.speed
 
 	if input.Collided {
 		orientation = -10 - float64(rand.Int()%10)
@@ -32,11 +35,12 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 		if enemy.State == entities.Alive {
 			orientation = enemy.Angle
 			shoot = true
+			speed = 15
 		}
 	}
 
 	return entities.AIOutput{
-		Speed:             10,
+		Speed:             speed,
 		OrientationChange: orientation,
 		Shoot:             shoot,
 	}

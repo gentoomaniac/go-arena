@@ -28,9 +28,10 @@ type Player struct {
 	MaxHealth      int
 	Energy         int
 	MaxEnergy      int
-	CurrentSpeed   int
-	Speed          int
-	MaxSpeed       int
+	CurrentSpeed   float64
+	TargetSpeed    float64
+	MaxSpeed       float64
+	Acceleration   float64
 	Orientation    float64
 	ColisionBounds CollisionBox
 	Collided       bool
@@ -51,4 +52,22 @@ func (p Player) CollisionBox() CollisionBox {
 			p.Position.Y + float64(p.ColisionBounds.Max.Y),
 		},
 	}
+}
+
+func (p *Player) UpdateSpeed(newSpeed float64) {
+	p.TargetSpeed = newSpeed
+	if p.TargetSpeed > p.MaxSpeed {
+		p.TargetSpeed = p.MaxSpeed
+	} else if p.TargetSpeed < -p.MaxSpeed {
+		p.TargetSpeed = -p.MaxSpeed
+	}
+
+	if p.CurrentSpeed > p.TargetSpeed {
+		p.CurrentSpeed -= p.Acceleration
+	} else if p.CurrentSpeed < p.TargetSpeed {
+		p.CurrentSpeed += p.Acceleration
+	}
+
+	//log.Debug().Float64("targetSpeed", p.TargetSpeed).Float64("currentSpeed", p.CurrentSpeed).Str("name", p.Name).Msg("")
+
 }
