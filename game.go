@@ -20,6 +20,7 @@ import (
 var (
 	ColisionDamage = 5 // how much health does a player loose on colisions
 	CannonCooldown = 60
+	ViewRange      = 2500
 )
 
 func NewGame() *Game {
@@ -58,6 +59,7 @@ type Game struct {
 	screenBuffer  *ebiten.Image
 	players       []*entities.Player
 	shells        []*entities.Shell
+	aiCooldown    int
 }
 
 func (g *Game) Init() (err error) {
@@ -149,6 +151,19 @@ func (g *Game) WithBots(bots []string) *Game {
 }
 
 func (g *Game) updatePlayer(p *entities.Player) {
+	enemies := make([]*entities.Enemy, 0)
+	for _, e := range g.players {
+		if e != p {
+			distance := math.Sqrt(math.Pow(p.Position.X-e.Position.X, 2) + math.Pow(p.Position.Y-e.Position.Y, 2))
+			if distance <= float64(ViewRange) {
+				angle := (math.Atan2(e.Position.Y-p.Position.Y, e.Position.X-p.Position.X) * 180 / math.Pi) - p.Orientation
+				enemies = append(enemies, &entities.Enemy{
+					Distance: distance,
+					Angle:    angle,
+				})
+			}
+		}
+	}
 	output := p.AI.Compute(entities.AIInput{
 		Position:     p.Position,
 		Speed:        p.Speed,
@@ -156,6 +171,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		Orientation:  p.Orientation,
 		Collided:     p.Collided,
 		CannonReady:  p.CannonCooldown <= 0,
+		Enemy:        enemies,
 	})
 	//jsonOutput, _ := json.Marshal(output)
 	//log.Debug().RawJSON("output", jsonOutput).Msg("bot Compute() result")
@@ -178,14 +194,14 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	playerVector := entities.Vector{
+	p.Movement = entities.Vector{
 		X: float64(p.Speed) * math.Cos(p.Orientation*math.Pi/180),
 		Y: float64(p.Speed) * math.Sin(p.Orientation*math.Pi/180),
 	}
 
 	//oldPos := p.Position
 
-	collisionPoint := entities.Vector{X: p.Position.X + playerVector.X, Y: p.Position.Y + playerVector.Y}
+	collisionPoint := entities.Vector{X: p.Position.X + p.Movement.X, Y: p.Position.Y + p.Movement.Y}
 	p.Collided = false
 	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
 		p.Collided = true
@@ -193,10 +209,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		if p.Health <= 0 {
 			p.State = entities.Dead
 		}
-	} else {
-		if p.State == entities.Alive {
-			p.Position.X += playerVector.X
-		}
+		p.Movement.X = 0
 	}
 	if int(collisionPoint.Y) < 0+p.Hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.Hitbox.Dy() {
 		p.Collided = true
@@ -204,10 +217,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		if p.Health <= 0 {
 			p.State = entities.Dead
 		}
-	} else {
-		if p.State == entities.Alive {
-			p.Position.Y += playerVector.Y
-		}
+		p.Movement.Y = 0
 	}
 }
 
@@ -217,12 +227,27 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 }
 
 func (g *Game) Update() error {
+	// update all player positions
+	for _, p := range g.players {
+		if p.State == entities.Alive {
+			p.Position.X += p.Movement.X
+			p.Position.Y += p.Movement.Y
+		}
+	}
+
+	// get new actions from bots
+	// if g.aiCooldown%10 == 0 {
 	for _, p := range g.players {
 		if p.State == entities.Alive {
 			g.updatePlayer(p)
 		}
 	}
+	// 	g.aiCooldown = 1
+	// } else {
+	// 	g.aiCooldown++
+	// }
 
+	// calculate shells
 	for i, s := range g.shells {
 		shellVector := entities.Vector{
 			X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),

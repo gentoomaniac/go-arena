@@ -25,7 +25,7 @@ func init() {
 
 func NewShell() (s *Shell, err error) {
 	s = &Shell{}
-	s.SetSprite(shellImage)
+	s.sprite = shellImage
 
 	return s, nil
 }
@@ -71,7 +71,4 @@ func (s *Shell) SetOrientation(o float64) {
 
 func (s Shell) Sprite() *ebiten.Image {
 	return s.sprite
-}
-func (s *Shell) SetSprite(sprite *ebiten.Image) {
-	s.sprite = sprite
 }

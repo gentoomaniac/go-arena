@@ -14,5 +14,4 @@ type Object interface {
 	Orientation() float64
 	SetOrientation(float64)
 	Sprite() *ebiten.Image
-	SetSprite(*ebiten.Image)
 }

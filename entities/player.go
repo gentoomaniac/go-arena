@@ -22,6 +22,7 @@ type Player struct {
 	Name           string
 	State          State
 	Position       Vector
+	Movement       Vector
 	Hitbox         image.Rectangle
 	Health         int
 	MaxHealth      int

@@ -13,6 +13,9 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 	if input.Collided {
 		orientation = -10 - float64(rand.Int()%10)
 	}
+	if len(input.Enemy) > 0 {
+		orientation = input.Enemy[0].Angle
+	}
 
 	return entities.AIOutput{Speed: 10, OrientationChange: orientation, Shoot: true}
 }

@@ -7,6 +7,7 @@ type AIInput struct {
 	Orientation  float64
 	Collided     bool
 	CannonReady  bool
+	Enemy        []*Enemy
 }
 
 type AIOutput struct {
