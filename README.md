@@ -33,6 +33,9 @@ To compile run:
 
 ## State
 
-So for this project is very rudimental but making progress.
+- Bots can move and change orientation.
+- Bots have view range within which they can "see" enemies.
+- They can crash into the level boundary and notice it (and loose health:))
+- They notice when they get hit by flying shells.
 
-Bots can't do much more than driving around and crash into walls (and "die" by that.)
+There's a lot left to do but updates are coming constantly.
