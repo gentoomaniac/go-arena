@@ -1,6 +1,8 @@
 package entities
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Vector struct {
 	X float64
@@ -18,6 +20,16 @@ type CollisionBox struct {
 
 func (c CollisionBox) String() string {
 	return fmt.Sprintf("[%s, %s]", c.Min, c.Max)
+}
+
+func Box(x0, y0, x1, y1 float64) CollisionBox {
+	if x0 > x1 {
+		x0, x1 = x1, x0
+	}
+	if y0 > y1 {
+		y0, y1 = y1, y0
+	}
+	return CollisionBox{Vector{x0, y0}, Vector{x1, y1}}
 }
 
 type Color struct {

@@ -7,6 +7,7 @@ type AIInput struct {
 	MaxSpeed     float64
 	Orientation  float64
 	Collided     bool
+	Hit          bool
 	CannonReady  bool
 	Enemy        []*Enemy
 }

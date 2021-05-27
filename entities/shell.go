@@ -23,11 +23,15 @@ func init() {
 	shellImage = ebiten.NewImageFromImage(img)
 }
 
-func NewShell() (s *Shell, err error) {
-	s = &Shell{}
+func NewShell() *Shell {
+	s := &Shell{}
 	s.sprite = shellImage
+	s.collisionBox = CollisionBox{
+		Min: Vector{-float64(shellImage.Bounds().Max.X) / 2, -float64(shellImage.Bounds().Max.Y) / 2},
+		Max: Vector{float64(shellImage.Bounds().Max.X) / 2, -float64(shellImage.Bounds().Max.Y) / 2},
+	}
 
-	return s, nil
+	return s
 }
 
 type Shell struct {
@@ -37,6 +41,8 @@ type Shell struct {
 	speed        int
 	orientation  float64
 	sprite       *ebiten.Image
+	Damage       int
+	Source       *Player
 }
 
 func (s Shell) Name() string {
@@ -44,7 +50,16 @@ func (s Shell) Name() string {
 }
 
 func (s Shell) CollisionBox() CollisionBox {
-	return s.collisionBox
+	return CollisionBox{
+		Min: Vector{
+			s.position.X + s.collisionBox.Min.X,
+			s.position.Y + s.collisionBox.Min.Y,
+		},
+		Max: Vector{
+			s.position.X + s.collisionBox.Max.X,
+			s.position.Y + s.collisionBox.Max.Y,
+		},
+	}
 }
 
 func (s Shell) Position() Vector {

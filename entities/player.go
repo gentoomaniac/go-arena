@@ -19,37 +19,39 @@ func (s State) String() string {
 }
 
 type Player struct {
-	Name           string
-	State          State
-	Position       Vector
-	Movement       Vector
-	Hitbox         image.Rectangle
-	Health         int
-	MaxHealth      int
-	Energy         int
-	MaxEnergy      int
-	CurrentSpeed   float64
-	TargetSpeed    float64
-	MaxSpeed       float64
-	Acceleration   float64
-	Orientation    float64
-	ColisionBounds CollisionBox
-	Collided       bool
-	CannonCooldown int
-	Sprite         *ebiten.Image
-	Color          *Color
-	AI             AI
-	Animations     map[gfx.AnimationType]*gfx.Animation
+	Name            string
+	State           State
+	Position        Vector
+	Movement        Vector
+	Hitbox          image.Rectangle
+	Health          int
+	MaxHealth       int
+	Energy          int
+	MaxEnergy       int
+	CurrentSpeed    float64
+	TargetSpeed     float64
+	MaxSpeed        float64
+	Acceleration    float64
+	Orientation     float64
+	CollisionBounds CollisionBox
+	Collided        bool
+	CannonCooldown  int
+	Hit             bool
+	Sprite          *ebiten.Image
+	Color           *Color
+	AI              AI
+	Animations      map[gfx.AnimationType]*gfx.Animation
 }
 
 func (p Player) CollisionBox() CollisionBox {
 	return CollisionBox{
 		Min: Vector{
-			p.Position.X + float64(p.ColisionBounds.Min.X),
-			p.Position.Y + float64(p.ColisionBounds.Min.Y)},
+			p.Position.X + p.CollisionBounds.Min.X,
+			p.Position.Y + p.CollisionBounds.Min.Y,
+		},
 		Max: Vector{
-			p.Position.X + float64(p.ColisionBounds.Max.X),
-			p.Position.Y + float64(p.ColisionBounds.Max.Y),
+			p.Position.X + p.CollisionBounds.Max.X,
+			p.Position.Y + p.CollisionBounds.Max.Y,
 		},
 	}
 }
@@ -67,7 +69,4 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 	} else if p.CurrentSpeed < p.TargetSpeed {
 		p.CurrentSpeed += p.Acceleration
 	}
-
-	//log.Debug().Float64("targetSpeed", p.TargetSpeed).Float64("currentSpeed", p.CurrentSpeed).Str("name", p.Name).Msg("")
-
 }

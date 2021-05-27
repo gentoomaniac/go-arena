@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	ColisionDamage = 5 // how much health does a player loose on colisions
+	ColisionDamage = 1 // how much health does a player loose on colisions
 	CannonCooldown = 60
+	ShellDamage    = 15
 	ViewRange      = 2500
 	MaxSpeed       = 25.0
 	Acceleration   = 0.1
@@ -132,9 +133,9 @@ func (g *Game) WithBots(bots []string) *Game {
 			Orientation:  float64(rand.Int() % 360),
 			Sprite:       playerSprite,
 			Color:        color,
-			ColisionBounds: entities.CollisionBox{
-				Min: entities.Vector{X: 0, Y: 0},
-				Max: entities.Vector{X: float64(playerSprite.Bounds().Dx()), Y: float64(playerSprite.Bounds().Dy())},
+			CollisionBounds: entities.CollisionBox{
+				Min: entities.Vector{X: -float64(playerSprite.Bounds().Dx()) / 2, Y: -float64(playerSprite.Bounds().Dy()) / 2},
+				Max: entities.Vector{X: float64(playerSprite.Bounds().Dx()) / 2, Y: float64(playerSprite.Bounds().Dy()) / 2},
 			},
 			Collided: false,
 			AI:       ai,
@@ -152,6 +153,22 @@ func (g *Game) WithBots(bots []string) *Game {
 		g.players = append(g.players, player)
 	}
 	return g
+}
+
+func checkColisionPoint(a entities.Vector, b entities.CollisionBox) bool {
+	if a.X >= b.Min.X &&
+		a.X <= b.Max.X &&
+		a.Y >= b.Min.Y &&
+		a.Y <= b.Max.Y {
+		return true
+	}
+	return false
+}
+func checkColisionBox(a entities.CollisionBox, b entities.CollisionBox) bool {
+	return checkColisionPoint(a.Min, b) ||
+		checkColisionPoint(entities.Vector{X: a.Min.X, Y: a.Max.Y}, b) ||
+		checkColisionPoint(a.Max, b) ||
+		checkColisionPoint(entities.Vector{X: a.Max.X, Y: a.Min.Y}, b)
 }
 
 func (g *Game) updatePlayer(p *entities.Player) {
@@ -176,6 +193,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		CurrentSpeed: p.CurrentSpeed,
 		Orientation:  p.Orientation,
 		Collided:     p.Collided,
+		Hit:          p.Hit,
 		CannonReady:  p.CannonCooldown <= 0,
 		Enemy:        enemies,
 	})
@@ -188,13 +206,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	} else {
 		if output.Shoot {
 			p.CannonCooldown = CannonCooldown
-			newShell, err := entities.NewShell()
+			newShell := entities.NewShell()
+			newShell.Source = p
 			newShell.SetOrientation(p.Orientation)
 			newShell.SetPosition(p.Position)
 			newShell.SetSpeed(30)
-			if err != nil {
-				log.Error().Err(err).Msg("failed adding shell")
-			}
+			newShell.Damage = ShellDamage
 			g.shells = append(g.shells, newShell)
 		}
 	}
@@ -206,6 +223,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 
 	//oldPos := p.Position
 
+	// check arena bounds
 	collisionPoint := entities.Vector{X: p.Position.X + p.Movement.X, Y: p.Position.Y + p.Movement.Y}
 	p.Collided = false
 	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
@@ -213,6 +231,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
 			p.State = entities.Dead
+			log.Info().Str("name", p.Name).Msg("crashed into a wall")
 		}
 		p.Movement.X = 0
 	}
@@ -221,12 +240,62 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
 			p.State = entities.Dead
+			log.Info().Str("name", p.Name).Msg("crashed into a wall")
 		}
 		p.Movement.Y = 0
 	}
+
+	// check hit by shell
+	p.Hit = false
+	for i, shell := range g.shells {
+		if shell.Source != p {
+			if checkColisionBox(p.CollisionBox(), shell.CollisionBox()) || checkColisionBox(shell.CollisionBox(), p.CollisionBox()) {
+				g.shells = remove(g.shells, i)
+				p.Hit = true
+				p.Health -= shell.Damage
+				if p.Health <= 0 {
+					p.State = entities.Dead
+					log.Info().Str("target", p.Name).Str("source", shell.Source.Name).Msg("killed")
+				}
+			}
+		}
+	}
+
+	// if g.arenaMap.CheckColision(image.Rect(int(p.Position.X+p.ColisionBounds.Min.X), int(p.Position.Y+p.ColisionBounds.Min.Y), int(p.Position.X+p.ColisionBounds.Max.X), int(p.Position.Y+p.ColisionBounds.Max.Y))) {
+
+	// 	log.Debug().Str("name", p.Name).Str("position", p.Position.String()).Msg("collision detected")
+	// }
+
+	// collisionLayer := g.arenaMap.GetObjectGroupByName("collisionmap")
+	// subject := image.Rect(
+	// 	int(p.Position.X+p.ColisionBounds.Min.X),
+	// 	int(p.Position.Y+p.ColisionBounds.Min.Y),
+	// 	int(p.Position.X+p.ColisionBounds.Max.X),
+	// 	int(p.Position.Y+p.ColisionBounds.Max.Y))
+	// for _, object := range collisionLayer.Objects {
+	// 	if subject.Min.X < object.X+object.Width &&
+	// 		subject.Max.X > object.X &&
+	// 		subject.Min.Y < object.Y+object.Height &&
+	// 		subject.Max.Y > object.Y {
+
+	// 		p.Collided = true
+	// 		p.Health -= ColisionDamage
+	// 		if p.Health <= 0 {
+	// 			p.State = entities.Dead
+	// 		}
+	// 		p.Movement.X = 0
+	// 		p.Movement.Y = 0
+
+	// 		log.Debug().Str("name", p.Name).Str("object", object.Name).Msg("collision")
+	// 	}
+	// }
 }
 
 func remove(s []*entities.Shell, i int) []*entities.Shell {
+	if i >= len(s) || i < 0 {
+		return s
+	}
+
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
 }
@@ -261,13 +330,13 @@ func (g *Game) Update() error {
 
 		position := s.Position()
 		collisionPoint := entities.Vector{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
-		if collisionPoint.X < 0+s.CollisionBox().Max.X || collisionPoint.X > float64(g.arenaMap.PixelWidth)-s.CollisionBox().Max.X {
+		if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
 			g.shells = remove(g.shells, i)
 			continue
 		} else {
 			position.X += shellVector.X
 		}
-		if collisionPoint.Y < 0+s.CollisionBox().Max.Y || collisionPoint.Y > float64(g.arenaMap.PixelHeight)-s.CollisionBox().Max.Y {
+		if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
 			g.shells = remove(g.shells, i)
 			continue
 		} else {
@@ -301,10 +370,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// collisionOp := &ebiten.DrawImageOptions{}
 	// collisionOp.ColorM.Scale(1, 0, 0, .75)
-	// err := g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), collisionOp)
-	// if err != nil {
-	// 	log.Debug().Err(err).Msg("rendering collisionmap failed")
-	// }
+	// g.screenBuffer.DrawImage(g.arenaMap.GetObjectGroupByName("collisionmap").DebugRender(g.arenaMap, g.scalingFactor), collisionOp)
 
 	// ======== Draw Player =========
 	for _, p := range g.players {
@@ -348,7 +414,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
 	// ======== Info ========
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()), 16, 16)
+	ebitenutil.DebugPrintAt(screen, "----", 16, 32)
+	for i, p := range g.players {
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s (%d/%d)", i+1, p.Name, p.Health, p.MaxHealth), 16, 48+i*16)
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
