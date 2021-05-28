@@ -231,7 +231,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
 			p.State = entities.Dead
-			log.Info().Str("name", p.Name).Msg("crashed into a wall")
+			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
 		p.Movement.X = 0
 	}
@@ -240,7 +240,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Health -= ColisionDamage
 		if p.Health <= 0 {
 			p.State = entities.Dead
-			log.Info().Str("name", p.Name).Msg("crashed into a wall")
+			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
 		p.Movement.Y = 0
 	}
@@ -261,34 +261,28 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	// if g.arenaMap.CheckColision(image.Rect(int(p.Position.X+p.ColisionBounds.Min.X), int(p.Position.Y+p.ColisionBounds.Min.Y), int(p.Position.X+p.ColisionBounds.Max.X), int(p.Position.Y+p.ColisionBounds.Max.Y))) {
+	mapObjects := g.arenaMap.GetObjectGroupByName("collisionmap").Objects
+	pObject := entities.Box(
+		p.CollisionBox().Min.X+p.Movement.X,
+		p.CollisionBox().Min.Y+p.Movement.Y,
+		p.CollisionBox().Max.X+p.Movement.X,
+		p.CollisionBox().Max.Y+p.Movement.Y,
+	)
+	p.Collided = false
+	for _, object := range mapObjects {
+		objectBox := entities.Box(float64(object.X), float64(object.Y), float64(object.X+object.Width), float64(object.Y+object.Height))
+		if checkColisionBox(pObject, objectBox) || checkColisionBox(objectBox, pObject) {
 
-	// 	log.Debug().Str("name", p.Name).Str("position", p.Position.String()).Msg("collision detected")
-	// }
-
-	// collisionLayer := g.arenaMap.GetObjectGroupByName("collisionmap")
-	// subject := image.Rect(
-	// 	int(p.Position.X+p.ColisionBounds.Min.X),
-	// 	int(p.Position.Y+p.ColisionBounds.Min.Y),
-	// 	int(p.Position.X+p.ColisionBounds.Max.X),
-	// 	int(p.Position.Y+p.ColisionBounds.Max.Y))
-	// for _, object := range collisionLayer.Objects {
-	// 	if subject.Min.X < object.X+object.Width &&
-	// 		subject.Max.X > object.X &&
-	// 		subject.Min.Y < object.Y+object.Height &&
-	// 		subject.Max.Y > object.Y {
-
-	// 		p.Collided = true
-	// 		p.Health -= ColisionDamage
-	// 		if p.Health <= 0 {
-	// 			p.State = entities.Dead
-	// 		}
-	// 		p.Movement.X = 0
-	// 		p.Movement.Y = 0
-
-	// 		log.Debug().Str("name", p.Name).Str("object", object.Name).Msg("collision")
-	// 	}
-	// }
+			p.Collided = true
+			p.Health -= ColisionDamage
+			if p.Health <= 0 {
+				p.State = entities.Dead
+				log.Info().Str("name", p.Name).Str("object", object.Name).Msgf("crashed into object")
+			}
+			p.Movement.X = 0
+			p.Movement.Y = 0
+		}
+	}
 }
 
 func remove(s []*entities.Shell, i int) []*entities.Shell {

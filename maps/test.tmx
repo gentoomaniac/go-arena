@@ -12,10 +12,10 @@
   </data>
  </layer>
  <objectgroup id="2" name="collisionmap">
-  <object id="1" name="top" x="0" y="0" width="6400" height="256"/>
-  <object id="5" name="left" x="0" y="0" width="256" height="6400"/>
-  <object id="6" name="right" x="6144" y="0" width="256" height="6400"/>
-  <object id="7" name="bottom" x="0" y="6144" width="6400" height="256"/>
+  <object id="1" name="top wall" x="0" y="0" width="6400" height="256"/>
+  <object id="5" name="left wall" x="0" y="0" width="256" height="6400"/>
+  <object id="6" name="right wall" x="6144" y="0" width="256" height="6400"/>
+  <object id="7" name="bottom wall" x="0" y="6144" width="6400" height="256"/>
   <object id="9" name="brazier1" x="1150" y="1025" width="130" height="120"/>
   <object id="10" name="brazier2" x="5106" y="1024" width="144" height="122"/>
   <object id="11" name="brazier3" x="5240" y="5101" width="149" height="144"/>
