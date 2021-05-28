@@ -87,6 +87,7 @@ var fireGif []byte
 
 func (g *Game) WithBots(bots []string) *Game {
 	var color *entities.Color
+	spawnPoints := g.arenaMap.GetObjectGroupByName("spawn_points").Objects
 	for index, botModulePath := range bots {
 		botPlugin, err := plugin.Open(botModulePath)
 		if err != nil {
@@ -120,10 +121,13 @@ func (g *Game) WithBots(bots []string) *Game {
 		case 3:
 			color = &entities.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
+
+		spawnPoint := spawnPoints[index%len(spawnPoints)]
+
 		player := &entities.Player{
 			Name:         ai.Name(),
 			State:        entities.Alive,
-			Position:     entities.Vector{X: 1000*float64(index) + 1000, Y: 1000*float64(index) + 1000},
+			Position:     entities.Vector{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
 			Health:       100,
 			MaxHealth:    100,
 			Energy:       100,

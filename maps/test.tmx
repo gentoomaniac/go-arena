@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="50" height="50" tilewidth="128" tileheight="128" infinite="0" nextlayerid="5" nextobjectid="14">
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="50" height="50" tilewidth="128" tileheight="128" infinite="0" nextlayerid="6" nextobjectid="21">
  <tileset firstgid="1" source="dungeon.tsx"/>
  <layer id="1" name="Base" width="50" height="50">
   <data encoding="base64">
@@ -20,5 +20,11 @@
   <object id="10" name="brazier2" x="5106" y="1024" width="144" height="122"/>
   <object id="11" name="brazier3" x="5240" y="5101" width="149" height="144"/>
   <object id="12" name="brazier4" x="1143" y="5239" width="141" height="132"/>
+ </objectgroup>
+ <objectgroup id="5" name="spawn_points">
+  <object id="14" name="top" x="3200" y="900" width="1" height="1"/>
+  <object id="15" name="left" x="900" y="3200" width="1" height="1"/>
+  <object id="17" name="right" x="5500" y="3200" width="1" height="1"/>
+  <object id="19" name="bottom" x="3200" y="5500" width="1" height="1"/>
  </objectgroup>
 </map>
