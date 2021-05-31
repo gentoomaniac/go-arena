@@ -366,16 +366,8 @@ func (g *Game) Update() error {
 }
 
 func RotateImgOpts(img *ebiten.Image, op ebiten.DrawImageOptions, degrees int) ebiten.DrawImageOptions {
-	// Move the image's center to the screen's upper-left corner.
-	// This is a preparation for rotating. When geometry matrices are applied,
-	// the origin point is the upper-left corner.
 	op.GeoM.Translate(-float64(img.Bounds().Dx())/2, -float64(img.Bounds().Dy())/2)
-
-	// Rotate the image. As a result, the anchor point of this rotate is
-	// the center of the image.
 	op.GeoM.Rotate(float64(degrees%360) * 2 * math.Pi / 360)
-
-	// Move the image to the screen's center.
 	op.GeoM.Translate(float64(img.Bounds().Dx())/2, float64(img.Bounds().Dy())/2)
 
 	return op
