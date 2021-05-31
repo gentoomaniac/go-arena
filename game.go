@@ -314,6 +314,8 @@ func (g *Game) Update() error {
 				g.selectedPlayer = g.players[2]
 			case ebiten.Key4:
 				g.selectedPlayer = g.players[3]
+			case ebiten.KeyEscape:
+				g.selectedPlayer = nil
 			}
 		}
 	}
