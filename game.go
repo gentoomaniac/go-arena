@@ -45,7 +45,7 @@ func loadFrameSprite() (*ebiten.Image, error) {
 
 	frameOp := &ebiten.DrawImageOptions{}
 	frameOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	frameOp.GeoM.Scale(scalingFactor, scalingFactor)
+	frameOp.GeoM.Scale(tankScalingFactor, tankScalingFactor)
 	frameOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(tankScalingFactor)), float64(eimg.Bounds().Dy()/2*int(tankScalingFactor)))
 
 	frameImage := ebiten.NewImage(eimg.Bounds().Dx()*int(tankScalingFactor), eimg.Bounds().Dy()*int(tankScalingFactor))
@@ -64,15 +64,14 @@ func getPlayerSprite() (*ebiten.Image, error) {
 	}
 	eimg := ebiten.NewImageFromImage(img)
 
-	scalingFactor := 4.0
 	playerOp := &ebiten.DrawImageOptions{}
 	// to scale the imageplayer
 	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	playerOp.GeoM.Scale(scalingFactor, scalingFactor)
+	playerOp.GeoM.Scale(tankScalingFactor, tankScalingFactor)
 	playerOp.GeoM.Rotate(90 * math.Pi / 180)
-	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(scalingFactor)), float64(eimg.Bounds().Dy()/2*int(scalingFactor)))
+	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(tankScalingFactor)), float64(eimg.Bounds().Dy()/2*int(tankScalingFactor)))
 
-	playerSprite := ebiten.NewImage(eimg.Bounds().Dx()*int(scalingFactor), eimg.Bounds().Dy()*int(scalingFactor))
+	playerSprite := ebiten.NewImage(eimg.Bounds().Dx()*int(tankScalingFactor), eimg.Bounds().Dy()*int(tankScalingFactor))
 	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
 
 	playerSprite.DrawImage(eimg, playerOp)
