@@ -25,10 +25,33 @@ var (
 	ViewRange      = 2500
 	MaxSpeed       = 25.0
 	Acceleration   = 0.1
+
+	tankScalingFactor = 4.0
 )
 
 func NewGame() *Game {
 	return &Game{}
+}
+
+//go:embed frame.png
+var frameRawImage []byte
+
+func loadFrameSprite() (*ebiten.Image, error) {
+	img, err := png.Decode(bytes.NewReader(frameRawImage))
+	if err != nil {
+		return nil, err
+	}
+	eimg := ebiten.NewImageFromImage(img)
+
+	frameOp := &ebiten.DrawImageOptions{}
+	frameOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
+	frameOp.GeoM.Scale(scalingFactor, scalingFactor)
+	frameOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(tankScalingFactor)), float64(eimg.Bounds().Dy()/2*int(tankScalingFactor)))
+
+	frameImage := ebiten.NewImage(eimg.Bounds().Dx()*int(tankScalingFactor), eimg.Bounds().Dy()*int(tankScalingFactor))
+
+	frameImage.DrawImage(eimg, frameOp)
+	return frameImage, nil
 }
 
 //go:embed tank.png
@@ -66,11 +89,16 @@ type Game struct {
 	selectedPlayer *entities.Player
 	Pressed        []ebiten.Key
 	PressedBefore  []ebiten.Key
+	frameImage     *ebiten.Image
 }
 
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
 	g.screenBuffer = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight)
+	g.frameImage, err = loadFrameSprite()
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -415,6 +443,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			fireOp := ebiten.DrawImageOptions{}
 			fireOp.GeoM.Translate(p.Position.X-float64(p.Animations[gfx.Fire].Width/2), p.Position.Y-float64(p.Animations[gfx.Fire].Height/2))
 			g.screenBuffer.DrawImage(p.Animations[gfx.Fire].GetFrame(), &fireOp)
+		}
+
+		if p == g.selectedPlayer {
+			frameOp := ebiten.DrawImageOptions{}
+			frameOp.GeoM.Translate(p.Position.X-float64(g.frameImage.Bounds().Dx())/2, p.Position.Y-float64(g.frameImage.Bounds().Dy())/2)
+			g.screenBuffer.DrawImage(g.frameImage, &frameOp)
 		}
 		//log.Debug().Str("name", entities.Name).Str("pos", entities.Position.String()).Float64("orientation", entities.Orientation).Msg("draw player")
 	}
