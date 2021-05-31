@@ -58,12 +58,14 @@ func getPlayerSprite() (*ebiten.Image, error) {
 }
 
 type Game struct {
-	arenaMap      *ebitmx.TmxMap
-	scalingFactor float64
-	screenBuffer  *ebiten.Image
-	players       []*entities.Player
-	shells        []*entities.Shell
-	aiCooldown    int
+	arenaMap       *ebitmx.TmxMap
+	scalingFactor  float64
+	screenBuffer   *ebiten.Image
+	players        []*entities.Player
+	shells         []*entities.Shell
+	selectedPlayer *entities.Player
+	Pressed        []ebiten.Key
+	PressedBefore  []ebiten.Key
 }
 
 func (g *Game) Init() (err error) {
@@ -299,6 +301,24 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 }
 
 func (g *Game) Update() error {
+	g.Pressed = nil
+	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
+		if ebiten.IsKeyPressed(k) {
+			g.Pressed = append(g.Pressed, k)
+			switch k {
+			case ebiten.Key1:
+				g.selectedPlayer = g.players[0]
+			case ebiten.Key2:
+				g.selectedPlayer = g.players[1]
+			case ebiten.Key3:
+				g.selectedPlayer = g.players[2]
+			case ebiten.Key4:
+				g.selectedPlayer = g.players[3]
+			}
+		}
+	}
+	g.PressedBefore = g.Pressed
+
 	// update all player positions
 	for _, p := range g.players {
 		if p.State == entities.Alive {
@@ -412,10 +432,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
 	// ======== Info ========
+
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()), 16, 16)
 	ebitenutil.DebugPrintAt(screen, "----", 16, 32)
-	for i, p := range g.players {
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s (%d/%d)", i+1, p.Name, p.Health, p.MaxHealth), 16, 48+i*16)
+	if g.selectedPlayer != nil {
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Selected Player: %s", g.selectedPlayer.Name), 16, 64)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d", g.selectedPlayer.Health, g.selectedPlayer.MaxHealth), 16, 80)
+	} else {
+		for i, p := range g.players {
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s (%d/%d)", i+1, p.Name, p.Health, p.MaxHealth), 16, 48+i*16)
+		}
 	}
 }
 
