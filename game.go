@@ -319,6 +319,17 @@ func (g *Game) Update() error {
 	}
 	g.PressedBefore = g.Pressed
 
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		pointer := entities.Vector{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
+		for _, p := range g.players {
+			if checkColisionPoint(pointer, p.CollisionBox()) {
+				g.selectedPlayer = p
+				break
+			}
+		}
+	}
+
 	// update all player positions
 	for _, p := range g.players {
 		if p.State == entities.Alive {
