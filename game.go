@@ -13,6 +13,7 @@ import (
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/gentoomaniac/go-arena/entities"
 	"github.com/gentoomaniac/go-arena/gfx"
+	"github.com/gentoomaniac/go-arena/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/rs/zerolog/log"
@@ -89,6 +90,10 @@ type Game struct {
 	Pressed        []ebiten.Key
 	PressedBefore  []ebiten.Key
 	frameImage     *ebiten.Image
+	gameOver       bool
+	gameOverFrame  ui.VictoryFrame
+	tabPressed     bool
+	helloWorld     *ui.Text
 }
 
 func (g *Game) Init() (err error) {
@@ -98,6 +103,8 @@ func (g *Game) Init() (err error) {
 	if err != nil {
 		return
 	}
+	g.helloWorld = ui.NewText("hello, world! 42")
+	g.gameOver = false
 	return
 }
 
@@ -305,7 +312,6 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	for _, object := range mapObjects {
 		objectBox := entities.Box(float64(object.X), float64(object.Y), float64(object.X+object.Width), float64(object.Y+object.Height))
 		if checkColisionBox(pObject, objectBox) || checkColisionBox(objectBox, pObject) {
-
 			p.Collided = true
 			p.Health -= ColisionDamage
 			if p.Health <= 0 {
@@ -315,6 +321,16 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			p.Movement.X = 0
 			p.Movement.Y = 0
 		}
+	}
+
+	var alivePlayers = 0
+	for _, p := range g.players {
+		if p.State == entities.Alive {
+			alivePlayers++
+		}
+	}
+	if alivePlayers <= 1 {
+		g.gameOver = true
 	}
 }
 
@@ -329,6 +345,7 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 
 func (g *Game) Update() error {
 	g.Pressed = nil
+	g.tabPressed = false
 	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
 		if ebiten.IsKeyPressed(k) {
 			g.Pressed = append(g.Pressed, k)
@@ -343,6 +360,8 @@ func (g *Game) Update() error {
 				g.selectedPlayer = g.players[3]
 			case ebiten.KeyEscape:
 				g.selectedPlayer = nil
+			case ebiten.KeyTab:
+				g.tabPressed = true
 			}
 		}
 	}
@@ -469,8 +488,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	scaledScreenOp.GeoM.Scale(g.scalingFactor, g.scalingFactor)
 	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
-	// ======== Info ========
+	if g.gameOver || g.tabPressed {
+		//frame := g.gameOverFrame.Frame()
+		frame := g.helloWorld.Image(false)
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(0.5, 0.5)
+		op.GeoM.Translate(float64(screenWidth/2)-float64(frame.Bounds().Dx()/2)*0.5, float64(screenHeight/2)-float64(frame.Bounds().Dy()/2)*0.5)
+		screen.DrawImage(frame, op)
+	}
 
+	// ======== Info ========
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()), 16, 16)
 	ebitenutil.DebugPrintAt(screen, "----", 16, 32)
 	if g.selectedPlayer != nil {
