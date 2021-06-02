@@ -91,9 +91,8 @@ type Game struct {
 	PressedBefore  []ebiten.Key
 	frameImage     *ebiten.Image
 	gameOver       bool
-	gameOverFrame  ui.VictoryFrame
+	statsFrame     *ui.Stats
 	tabPressed     bool
-	helloWorld     *ui.Text
 }
 
 func (g *Game) Init() (err error) {
@@ -103,8 +102,8 @@ func (g *Game) Init() (err error) {
 	if err != nil {
 		return
 	}
-	g.helloWorld = ui.NewText("hello, world! 42")
 	g.gameOver = false
+	g.statsFrame = ui.NewStats("Stats")
 	return
 }
 
@@ -489,8 +488,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
 	if g.gameOver || g.tabPressed {
-		//frame := g.gameOverFrame.Frame()
-		frame := g.helloWorld.Image(false)
+		frame := g.statsFrame.Image(false)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(0.5, 0.5)
 		op.GeoM.Translate(float64(screenWidth/2)-float64(frame.Bounds().Dx()/2)*0.5, float64(screenHeight/2)-float64(frame.Bounds().Dy()/2)*0.5)
