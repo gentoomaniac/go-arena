@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"plugin"
+	"time"
 
 	_ "embed"
 
@@ -20,12 +21,14 @@ import (
 )
 
 var (
-	ColisionDamage = 1 // how much health does a player loose on colisions
-	CannonCooldown = 60
-	ShellDamage    = 15
-	ViewRange      = 2500
-	MaxSpeed       = 25.0
-	Acceleration   = 0.1
+	ColisionDamage  = 1 // how much health does a player loose on colisions
+	CannonCooldown  = 60
+	ShellDamage     = 15
+	ViewRange       = 2500
+	MaxSpeed        = 25.0
+	Acceleration    = 0.1
+	MaxRespawns     = 1
+	RespawnWaitTime = 5 * time.Second
 
 	tankScalingFactor = 4.0
 )
@@ -93,6 +96,7 @@ type Game struct {
 	gameOver       bool
 	statsFrame     *ui.Stats
 	tabPressed     bool
+	MaxRespawns    int
 }
 
 func (g *Game) Init() (err error) {
@@ -104,6 +108,7 @@ func (g *Game) Init() (err error) {
 	}
 	g.gameOver = false
 	g.statsFrame = ui.NewStats("Stats", g.players)
+	g.MaxRespawns = MaxRespawns
 	return
 }
 
@@ -225,34 +230,39 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			}
 		}
 	}
-	output := p.AI.Compute(entities.AIInput{
-		Position:     p.Position,
-		TargetSpeed:  p.TargetSpeed,
-		MaxSpeed:     p.MaxSpeed,
-		CurrentSpeed: p.CurrentSpeed,
-		Orientation:  p.Orientation,
-		Collided:     p.Collided,
-		Hit:          p.Hit,
-		CannonReady:  p.CannonCooldown <= 0,
-		Enemy:        enemies,
-	})
 
-	p.UpdateSpeed(output.Speed)
+	if p.State == entities.Alive {
+		output := p.AI.Compute(entities.AIInput{
+			Position:     p.Position,
+			TargetSpeed:  p.TargetSpeed,
+			MaxSpeed:     p.MaxSpeed,
+			CurrentSpeed: p.CurrentSpeed,
+			Orientation:  p.Orientation,
+			Collided:     p.Collided,
+			Hit:          p.Hit,
+			CannonReady:  p.CannonCooldown <= 0,
+			Enemy:        enemies,
+		})
 
-	p.Orientation = p.Orientation + output.OrientationChange
-	if p.CannonCooldown > 0 {
-		p.CannonCooldown--
-	} else {
-		if output.Shoot {
-			p.CannonCooldown = CannonCooldown
-			newShell := entities.NewShell()
-			newShell.Source = p
-			newShell.SetOrientation(p.Orientation)
-			newShell.SetPosition(p.Position)
-			newShell.SetSpeed(30)
-			newShell.Damage = ShellDamage
-			g.shells = append(g.shells, newShell)
+		p.UpdateSpeed(output.Speed)
+
+		p.Orientation = p.Orientation + output.OrientationChange
+		if p.CannonCooldown > 0 {
+			p.CannonCooldown--
+		} else {
+			if output.Shoot {
+				p.CannonCooldown = CannonCooldown
+				newShell := entities.NewShell()
+				newShell.Source = p
+				newShell.SetOrientation(p.Orientation)
+				newShell.SetPosition(p.Position)
+				newShell.SetSpeed(30)
+				newShell.Damage = ShellDamage
+				g.shells = append(g.shells, newShell)
+			}
 		}
+	} else {
+		p.UpdateSpeed(0)
 	}
 
 	p.Movement = entities.Vector{
@@ -381,18 +391,14 @@ func (g *Game) Update() error {
 
 		// update all player positions
 		for _, p := range g.players {
-			if p.State == entities.Alive {
-				p.Position.X += p.Movement.X
-				p.Position.Y += p.Movement.Y
-			}
+			p.Position.X += p.Movement.X
+			p.Position.Y += p.Movement.Y
 		}
 
 		// get new actions from bots
 		// if g.aiCooldown%10 == 0 {
 		for _, p := range g.players {
-			if p.State == entities.Alive {
-				g.updatePlayer(p)
-			}
+			g.updatePlayer(p)
 		}
 		// 	g.aiCooldown = 1
 		// } else {

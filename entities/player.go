@@ -41,6 +41,7 @@ type Player struct {
 	Color           *Color
 	AI              AI
 	Animations      map[gfx.AnimationType]*gfx.Animation
+	NumberRespawns  int
 }
 
 func (p Player) CollisionBox() CollisionBox {
