@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/gentoomaniac/go-arena/entities"
@@ -35,7 +36,7 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 		if enemy.State == entities.Alive {
 			orientation = enemy.Angle
 			shoot = true
-			speed = 15
+			speed = 10
 		}
 	}
 
@@ -47,7 +48,7 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 }
 
 func (t TestBot) Name() string {
-	return "TestBot"
+	return fmt.Sprintf("TestBot %d", rand.Int()%10)
 }
 
 var Bot TestBot

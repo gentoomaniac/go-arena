@@ -14,6 +14,7 @@ func (g *GentooBot) Init() {}
 func (g *GentooBot) Compute(input entities.AIInput) entities.AIOutput {
 	shoot := false
 	orientation := 0.2
+	speed := float64(15 + rand.Int()%10)
 	if input.Collided {
 		orientation = 10 + float64(rand.Int()%5)
 	}
@@ -22,7 +23,7 @@ func (g *GentooBot) Compute(input entities.AIInput) entities.AIOutput {
 		shoot = true
 	}
 
-	return entities.AIOutput{Speed: 20, OrientationChange: orientation, Shoot: shoot}
+	return entities.AIOutput{Speed: speed, OrientationChange: orientation, Shoot: shoot}
 }
 
 func (g *GentooBot) Name() string {
