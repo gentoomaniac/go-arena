@@ -302,7 +302,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				g.shells = remove(g.shells, i)
 				p.Hit = true
 				p.Health -= shell.Damage
-				if p.Health <= 0 {
+				if p.Health <= 0 && p.State == entities.Alive {
 					p.State = entities.Dead
 					log.Info().Str("target", p.Name).Str("source", shell.Source.Name).Msg("killed")
 				}
@@ -331,16 +331,6 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			p.Movement.X = 0
 			p.Movement.Y = 0
 		}
-	}
-
-	var alivePlayers = 0
-	for _, p := range g.players {
-		if p.State == entities.Alive {
-			alivePlayers++
-		}
-	}
-	if alivePlayers <= 1 {
-		g.gameOver = true
 	}
 }
 
@@ -428,6 +418,16 @@ func (g *Game) Update() error {
 			}
 			s.SetPosition(position)
 		}
+	}
+
+	var alivePlayers = 0
+	for _, p := range g.players {
+		if p.State == entities.Alive {
+			alivePlayers++
+		}
+	}
+	if alivePlayers <= 1 {
+		g.gameOver = true
 	}
 	return nil
 }
