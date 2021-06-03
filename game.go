@@ -344,82 +344,84 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 }
 
 func (g *Game) Update() error {
-	g.Pressed = nil
-	g.tabPressed = false
-	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
-		if ebiten.IsKeyPressed(k) {
-			g.Pressed = append(g.Pressed, k)
-			switch k {
-			case ebiten.Key1:
-				g.selectedPlayer = g.players[0]
-			case ebiten.Key2:
-				g.selectedPlayer = g.players[1]
-			case ebiten.Key3:
-				g.selectedPlayer = g.players[2]
-			case ebiten.Key4:
-				g.selectedPlayer = g.players[3]
-			case ebiten.KeyEscape:
-				g.selectedPlayer = nil
-			case ebiten.KeyTab:
-				g.tabPressed = true
+	if !g.gameOver {
+		g.Pressed = nil
+		g.tabPressed = false
+		for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
+			if ebiten.IsKeyPressed(k) {
+				g.Pressed = append(g.Pressed, k)
+				switch k {
+				case ebiten.Key1:
+					g.selectedPlayer = g.players[0]
+				case ebiten.Key2:
+					g.selectedPlayer = g.players[1]
+				case ebiten.Key3:
+					g.selectedPlayer = g.players[2]
+				case ebiten.Key4:
+					g.selectedPlayer = g.players[3]
+				case ebiten.KeyEscape:
+					g.selectedPlayer = nil
+				case ebiten.KeyTab:
+					g.tabPressed = true
+				}
 			}
 		}
-	}
-	g.PressedBefore = g.Pressed
+		g.PressedBefore = g.Pressed
 
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		mx, my := ebiten.CursorPosition()
-		pointer := entities.Vector{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			mx, my := ebiten.CursorPosition()
+			pointer := entities.Vector{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
+			for _, p := range g.players {
+				if checkColisionPoint(pointer, p.CollisionBox()) {
+					g.selectedPlayer = p
+					break
+				}
+			}
+		}
+
+		// update all player positions
 		for _, p := range g.players {
-			if checkColisionPoint(pointer, p.CollisionBox()) {
-				g.selectedPlayer = p
-				break
+			if p.State == entities.Alive {
+				p.Position.X += p.Movement.X
+				p.Position.Y += p.Movement.Y
 			}
 		}
-	}
 
-	// update all player positions
-	for _, p := range g.players {
-		if p.State == entities.Alive {
-			p.Position.X += p.Movement.X
-			p.Position.Y += p.Movement.Y
+		// get new actions from bots
+		// if g.aiCooldown%10 == 0 {
+		for _, p := range g.players {
+			if p.State == entities.Alive {
+				g.updatePlayer(p)
+			}
 		}
-	}
+		// 	g.aiCooldown = 1
+		// } else {
+		// 	g.aiCooldown++
+		// }
 
-	// get new actions from bots
-	// if g.aiCooldown%10 == 0 {
-	for _, p := range g.players {
-		if p.State == entities.Alive {
-			g.updatePlayer(p)
-		}
-	}
-	// 	g.aiCooldown = 1
-	// } else {
-	// 	g.aiCooldown++
-	// }
+		// calculate shells
+		for i, s := range g.shells {
+			shellVector := entities.Vector{
+				X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
+				Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
+			}
 
-	// calculate shells
-	for i, s := range g.shells {
-		shellVector := entities.Vector{
-			X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
-			Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
+			position := s.Position()
+			collisionPoint := entities.Vector{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
+			if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
+				g.shells = remove(g.shells, i)
+				continue
+			} else {
+				position.X += shellVector.X
+			}
+			if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
+				g.shells = remove(g.shells, i)
+				continue
+			} else {
+				position.Y += shellVector.Y
+			}
+			s.SetPosition(position)
 		}
-
-		position := s.Position()
-		collisionPoint := entities.Vector{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
-		if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
-			g.shells = remove(g.shells, i)
-			continue
-		} else {
-			position.X += shellVector.X
-		}
-		if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
-			g.shells = remove(g.shells, i)
-			continue
-		} else {
-			position.Y += shellVector.Y
-		}
-		s.SetPosition(position)
 	}
 	return nil
 }
