@@ -103,7 +103,7 @@ func (g *Game) Init() (err error) {
 		return
 	}
 	g.gameOver = false
-	g.statsFrame = ui.NewStats("Stats")
+	g.statsFrame = ui.NewStats("Stats", g.players)
 	return
 }
 
