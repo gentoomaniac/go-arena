@@ -489,7 +489,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.screenBuffer, scaledScreenOp)
 
 	if g.gameOver || g.tabPressed {
-		frame := g.statsFrame.Image(false)
+		frame := g.statsFrame.Image(true)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(0.5, 0.5)
 		op.GeoM.Translate(float64(screenWidth/2)-float64(frame.Bounds().Dx()/2)*0.5, float64(screenHeight/2)-float64(frame.Bounds().Dy()/2)*0.5)
