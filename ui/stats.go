@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"image/png"
-	"time"
 
 	"github.com/gentoomaniac/go-arena/entities"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -13,8 +12,6 @@ import (
 )
 
 var (
-	Fade            = true
-	FadeTime        = 1000 * time.Millisecond
 	HeadlineScaling = 0.5
 	TextScaling     = 0.25
 	MarginTop       = 50.0
