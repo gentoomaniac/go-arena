@@ -317,6 +317,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				p.State = entities.Dead
 				log.Info().Str("name", p.Name).Str("object", object.Name).Msgf("crashed into object")
 			}
+			p.CurrentSpeed = 0.0
 			p.Movement.X = 0
 			p.Movement.Y = 0
 		}
