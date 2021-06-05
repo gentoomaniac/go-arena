@@ -27,7 +27,7 @@ func run(bots []string) {
 	tmxMap.CameraPosition = startPosition
 	log.Debug().Int("width", tmxMap.PixelWidth).Int("height", tmxMap.PixelHeight).Msg("map dimensions")
 
-	game := NewGame().WithMap(tmxMap).WithScalingFactor(scalingFactor).WithBots(bots)
+	game := NewGame().WithMap(tmxMap).WithScalingFactor(scalingFactor).WithRespawns(cli.Respawns).WithBots(bots)
 	err := game.Init()
 	if err != nil {
 		log.Error().Err(err).Msg("initialising game failed")

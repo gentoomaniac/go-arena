@@ -16,9 +16,11 @@ var (
 var cli struct {
 	logging.LoggingConfig
 
-	Bot           []string `short:"b" help:"add another bot with this filename to the arena" required:""`
-	ProfileMemory string   `help:"write a memory profile"`
-	ProfileCPU    string   `help:"write a cpu profile"`
+	Bot      []string `short:"b" help:"add another bot with this filename to the arena" required:""`
+	Respawns int      `short:"r" help:"Number of respawns"`
+
+	ProfileMemory string `help:"write a memory profile"`
+	ProfileCPU    string `help:"write a cpu profile"`
 
 	Version kong.VersionFlag `short:"v" help:"Display version."`
 }

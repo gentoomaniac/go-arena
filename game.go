@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/rand"
 	"plugin"
-	"time"
 
 	_ "embed"
 
@@ -21,15 +20,13 @@ import (
 )
 
 var (
-	ColisionDamage  = 1 // how much health does a player loose on colisions
-	CannonCooldown  = 60
-	ShellDamage     = 15
-	ViewRange       = 2500
-	MaxSpeed        = 25.0
-	Acceleration    = 0.1
-	MaxRespawns     = 1
-	RespawnWaitTime = 5 * time.Second
-
+	ColisionDamage    = 1 // how much health does a player loose on colisions
+	CannonCooldown    = 60
+	ShellDamage       = 15
+	ViewRange         = 2500
+	MaxSpeed          = 25.0
+	Acceleration      = 0.1
+	RespawnWaitTime   = 180 // number ticks
 	tankScalingFactor = 4.0
 )
 
@@ -96,7 +93,7 @@ type Game struct {
 	gameOver       bool
 	statsFrame     *ui.Stats
 	tabPressed     bool
-	MaxRespawns    int
+	respawns       int
 }
 
 func (g *Game) Init() (err error) {
@@ -108,7 +105,6 @@ func (g *Game) Init() (err error) {
 	}
 	g.gameOver = false
 	g.statsFrame = ui.NewStats("Stats", g.players)
-	g.MaxRespawns = MaxRespawns
 	return
 }
 
@@ -124,6 +120,11 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 
 //go:embed fire_transparent.gif
 var fireGif []byte
+
+func (g *Game) WithRespawns(respawns int) *Game {
+	g.respawns = respawns
+	return g
+}
 
 func (g *Game) WithBots(bots []string) *Game {
 	var color *entities.Color
@@ -181,8 +182,9 @@ func (g *Game) WithBots(bots []string) *Game {
 				Min: entities.Vector{X: -float64(playerSprite.Bounds().Dx()) / 2, Y: -float64(playerSprite.Bounds().Dy()) / 2},
 				Max: entities.Vector{X: float64(playerSprite.Bounds().Dx()) / 2, Y: float64(playerSprite.Bounds().Dy()) / 2},
 			},
-			Collided: false,
-			AI:       ai,
+			Collided:    false,
+			AI:          ai,
+			MaxRespawns: g.respawns,
 		}
 		player.Animations = make(map[gfx.AnimationType]*gfx.Animation)
 
@@ -261,8 +263,22 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				g.shells = append(g.shells, newShell)
 			}
 		}
-	} else {
+	} else if p.State == entities.Dead {
 		p.UpdateSpeed(0)
+		if p.NumberRespawns < p.MaxRespawns {
+			if p.RespawnCooldown > 0 {
+				p.RespawnCooldown--
+			} else {
+				p.CurrentSpeed = 0
+				spawnPoints := g.arenaMap.GetObjectGroupByName("spawn_points").Objects
+				spawnPoint := spawnPoints[rand.Int()%len(spawnPoints)]
+				p.Position.X = float64(spawnPoint.X)
+				p.Position.Y = float64(spawnPoint.Y)
+				p.State = entities.Alive
+				p.Health = p.MaxHealth
+				p.NumberRespawns++
+			}
+		}
 	}
 
 	p.Movement = entities.Vector{
@@ -278,7 +294,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
 		p.Collided = true
 		p.Health -= ColisionDamage
-		if p.Health <= 0 {
+		if p.Health <= 0 && p.State == entities.Alive {
+			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
@@ -287,7 +304,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	if int(collisionPoint.Y) < 0+p.Hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.Hitbox.Dy() {
 		p.Collided = true
 		p.Health -= ColisionDamage
-		if p.Health <= 0 {
+		if p.Health <= 0 && p.State == entities.Alive {
+			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
@@ -303,8 +321,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				p.Hit = true
 				p.Health -= shell.Damage
 				if p.Health <= 0 && p.State == entities.Alive {
+					p.RespawnCooldown = RespawnWaitTime
 					p.State = entities.Dead
-					log.Info().Str("target", p.Name).Str("source", shell.Source.Name).Msg("killed")
+					log.Info().Str("target", p.Name).Str("source", shell.Source.Name).Int("max", p.MaxRespawns).Int("spawns", p.NumberRespawns).Msg("killed")
 				}
 			}
 		}
@@ -324,8 +343,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			p.Collided = true
 			p.Health -= ColisionDamage
 			if p.Health <= 0 {
+				p.RespawnCooldown = RespawnWaitTime
 				p.State = entities.Dead
-				log.Info().Str("name", p.Name).Str("object", object.Name).Msgf("crashed into object")
+				log.Info().Str("name", p.Name).Str("object", object.Name).Int("max", p.MaxRespawns).Int("spawns", p.NumberRespawns).Msgf("crashed into object")
 			}
 			p.CurrentSpeed = 0.0
 			p.Movement.X = 0
@@ -422,10 +442,11 @@ func (g *Game) Update() error {
 
 	var alivePlayers = 0
 	for _, p := range g.players {
-		if p.State == entities.Alive {
+		if p.State == entities.Alive || p.NumberRespawns < p.MaxRespawns {
 			alivePlayers++
 		}
 	}
+	//log.Debug().Int("alive", alivePlayers).Msg("alive players")
 	if alivePlayers <= 1 {
 		g.gameOver = true
 	}

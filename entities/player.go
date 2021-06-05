@@ -42,6 +42,8 @@ type Player struct {
 	AI              AI
 	Animations      map[gfx.AnimationType]*gfx.Animation
 	NumberRespawns  int
+	MaxRespawns     int
+	RespawnCooldown int
 }
 
 func (p Player) CollisionBox() CollisionBox {
