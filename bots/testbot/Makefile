@@ -6,4 +6,4 @@ ${name}.so:
 build: ${name}.so
 
 clean:
-	rm ${name}.so
+	rm ${name}.so | true
