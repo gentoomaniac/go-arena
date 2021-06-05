@@ -2,7 +2,7 @@ before:
   hooks:
     - go mod download
 builds:
-  - main: ./main.go
+  - main: .
     id: "go-arena"
     binary: "go-arena"
     ldflags:
