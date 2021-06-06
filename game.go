@@ -342,15 +342,9 @@ func (g *Game) Update() error {
 			p.Position.Y += p.Movement.Y
 		}
 
-		// get new actions from bots
-		// if g.aiCooldown%10 == 0 {
 		for _, p := range g.players {
 			g.updatePlayer(p)
 		}
-		// 	g.aiCooldown = 1
-		// } else {
-		// 	g.aiCooldown++
-		// }
 
 		// calculate shells
 		for i, s := range g.shells {
@@ -383,19 +377,10 @@ func (g *Game) Update() error {
 			alivePlayers++
 		}
 	}
-	//log.Debug().Int("alive", alivePlayers).Msg("alive players")
 	if alivePlayers <= 1 {
 		g.gameOver = true
 	}
 	return nil
-}
-
-func RotateImgOpts(img *ebiten.Image, op ebiten.DrawImageOptions, degrees int) ebiten.DrawImageOptions {
-	op.GeoM.Translate(-float64(img.Bounds().Dx())/2, -float64(img.Bounds().Dy())/2)
-	op.GeoM.Rotate(float64(degrees%360) * 2 * math.Pi / 360)
-	op.GeoM.Translate(float64(img.Bounds().Dx())/2, float64(img.Bounds().Dy())/2)
-
-	return op
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -410,15 +395,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// ======== Draw Player =========
 	for _, p := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
-		playerOp = RotateImgOpts(p.Sprite, playerOp, int(p.Orientation))
+		playerOp = gfx.RotateImgOpts(p.Sprite, playerOp, int(p.Orientation))
 		playerOp.ColorM.Scale(p.Color.R, p.Color.G, p.Color.B, p.Color.Alpha)
-
-		// // entities.Position is absolute on the Map, the coordinates here need to be relative to the camera 0/0
-		// // Here is an edge case when the Camera is bigger than the map, stuff breaks
-		//playerProjectedX := int(float64(entities.Position.X-g.arenaMap.CameraPosition.X)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.X)/2)
-		//playerProjectedY := int(float64(entities.Position.Y-g.arenaMap.CameraPosition.Y)*g.scalingFactor + float64(g.arenaMap.CameraBounds.Max.Y)/2)
-
-		// // to move the image
 		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 
 		g.screenBuffer.DrawImage(p.Sprite, &playerOp)
@@ -434,13 +412,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			frameOp.GeoM.Translate(p.Position.X-float64(g.frameImage.Bounds().Dx())/2, p.Position.Y-float64(g.frameImage.Bounds().Dy())/2)
 			g.screenBuffer.DrawImage(g.frameImage, &frameOp)
 		}
-		//log.Debug().Str("name", entities.Name).Str("pos", entities.Position.String()).Float64("orientation", entities.Orientation).Msg("draw player")
 	}
 
 	// ======== Draw Shells =========
 	for _, s := range g.shells {
 		shellOp := ebiten.DrawImageOptions{}
-		shellOp = RotateImgOpts(s.Sprite(), shellOp, int(s.Orientation()))
+		shellOp = gfx.RotateImgOpts(s.Sprite(), shellOp, int(s.Orientation()))
 
 		// // to move the image
 		shellOp.GeoM.Translate(s.Position().X-float64(s.Sprite().Bounds().Dx()/2), s.Position().Y-float64(s.Sprite().Bounds().Dy()/2))
