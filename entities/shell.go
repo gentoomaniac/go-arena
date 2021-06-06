@@ -1,35 +1,19 @@
 package entities
 
 import (
-	"bytes"
-	"image/png"
-
 	_ "embed"
 
+	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/rs/zerolog/log"
 )
-
-//go:embed shell.png
-var shellPng []byte
-var shellImage *ebiten.Image
-
-func init() {
-	img, err := png.Decode(bytes.NewReader(shellPng))
-	if err != nil {
-		log.Error().Err(err).Msg("could not load shell image")
-	}
-
-	shellImage = ebiten.NewImageFromImage(img)
-}
 
 func NewShell() *Shell {
 	s := &Shell{}
-	s.sprite = shellImage
+	s.sprite = gfx.GetShellImage()
 	s.collisionBox = vector.Rectangle{
-		Min: vector.Vec2{X: -float64(shellImage.Bounds().Max.X) / 2, Y: -float64(shellImage.Bounds().Max.Y) / 2},
-		Max: vector.Vec2{X: float64(shellImage.Bounds().Max.X) / 2, Y: float64(shellImage.Bounds().Max.Y) / 2},
+		Min: vector.Vec2{X: -float64(s.sprite.Bounds().Max.X) / 2, Y: -float64(s.sprite.Bounds().Max.Y) / 2},
+		Max: vector.Vec2{X: float64(s.sprite.Bounds().Max.X) / 2, Y: float64(s.sprite.Bounds().Max.Y) / 2},
 	}
 
 	return s
