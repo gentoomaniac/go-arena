@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/gentoomaniac/go-arena/gfx"
+	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -21,8 +22,8 @@ func (s State) String() string {
 type Player struct {
 	Name            string
 	State           State
-	Position        Vector
-	Movement        Vector
+	Position        vector.Vec2
+	Movement        vector.Vec2
 	Hitbox          image.Rectangle
 	Health          int
 	MaxHealth       int
@@ -33,12 +34,12 @@ type Player struct {
 	MaxSpeed        float64
 	Acceleration    float64
 	Orientation     float64
-	CollisionBounds CollisionBox
+	CollisionBounds vector.Rectangle
 	Collided        bool
 	CannonCooldown  int
 	Hit             bool
 	Sprite          *ebiten.Image
-	Color           *Color
+	Color           *gfx.Color
 	AI              AI
 	Animations      map[gfx.AnimationType]*gfx.Animation
 	NumberRespawns  int
@@ -46,15 +47,15 @@ type Player struct {
 	RespawnCooldown int
 }
 
-func (p Player) CollisionBox() CollisionBox {
-	return CollisionBox{
-		Min: Vector{
-			p.Position.X + p.CollisionBounds.Min.X,
-			p.Position.Y + p.CollisionBounds.Min.Y,
+func (p Player) CollisionBox() vector.Rectangle {
+	return vector.Rectangle{
+		Min: vector.Vec2{
+			X: p.Position.X + p.CollisionBounds.Min.X,
+			Y: p.Position.Y + p.CollisionBounds.Min.Y,
 		},
-		Max: Vector{
-			p.Position.X + p.CollisionBounds.Max.X,
-			p.Position.Y + p.CollisionBounds.Max.Y,
+		Max: vector.Vec2{
+			X: p.Position.X + p.CollisionBounds.Max.X,
+			Y: p.Position.Y + p.CollisionBounds.Max.Y,
 		},
 	}
 }

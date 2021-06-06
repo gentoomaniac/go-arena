@@ -1,7 +1,9 @@
 package entities
 
+import "github.com/gentoomaniac/go-arena/vector"
+
 type AIInput struct {
-	Position     Vector
+	Position     vector.Vec2
 	CurrentSpeed float64
 	TargetSpeed  float64
 	MaxSpeed     float64

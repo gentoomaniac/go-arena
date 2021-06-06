@@ -6,6 +6,7 @@ import (
 
 	_ "embed"
 
+	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/rs/zerolog/log"
 )
@@ -26,9 +27,9 @@ func init() {
 func NewShell() *Shell {
 	s := &Shell{}
 	s.sprite = shellImage
-	s.collisionBox = CollisionBox{
-		Min: Vector{-float64(shellImage.Bounds().Max.X) / 2, -float64(shellImage.Bounds().Max.Y) / 2},
-		Max: Vector{float64(shellImage.Bounds().Max.X) / 2, -float64(shellImage.Bounds().Max.Y) / 2},
+	s.collisionBox = vector.Rectangle{
+		Min: vector.Vec2{X: -float64(shellImage.Bounds().Max.X) / 2, Y: -float64(shellImage.Bounds().Max.Y) / 2},
+		Max: vector.Vec2{X: float64(shellImage.Bounds().Max.X) / 2, Y: float64(shellImage.Bounds().Max.Y) / 2},
 	}
 
 	return s
@@ -36,8 +37,8 @@ func NewShell() *Shell {
 
 type Shell struct {
 	name         string
-	collisionBox CollisionBox
-	position     Vector
+	collisionBox vector.Rectangle
+	position     vector.Vec2
 	speed        int
 	orientation  float64
 	sprite       *ebiten.Image
@@ -49,23 +50,23 @@ func (s Shell) Name() string {
 	return s.name
 }
 
-func (s Shell) CollisionBox() CollisionBox {
-	return CollisionBox{
-		Min: Vector{
-			s.position.X + s.collisionBox.Min.X,
-			s.position.Y + s.collisionBox.Min.Y,
+func (s Shell) CollisionBox() vector.Rectangle {
+	return vector.Rectangle{
+		Min: vector.Vec2{
+			X: s.position.X + s.collisionBox.Min.X,
+			Y: s.position.Y + s.collisionBox.Min.Y,
 		},
-		Max: Vector{
-			s.position.X + s.collisionBox.Max.X,
-			s.position.Y + s.collisionBox.Max.Y,
+		Max: vector.Vec2{
+			X: s.position.X + s.collisionBox.Max.X,
+			Y: s.position.Y + s.collisionBox.Max.Y,
 		},
 	}
 }
 
-func (s Shell) Position() Vector {
+func (s Shell) Position() vector.Vec2 {
 	return s.position
 }
-func (s *Shell) SetPosition(p Vector) {
+func (s *Shell) SetPosition(p vector.Vec2) {
 	s.position = p
 }
 
