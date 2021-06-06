@@ -131,10 +131,10 @@ func (g *Game) WithBots(bots []string) *Game {
 			Orientation:  float64(rand.Int() % 360),
 			Sprite:       playerSprite,
 			Color:        color,
-			CollisionBounds: vector.Rectangle{
-				Min: vector.Vec2{X: -float64(playerSprite.Bounds().Dx()) / 2, Y: -float64(playerSprite.Bounds().Dy()) / 2},
-				Max: vector.Vec2{X: float64(playerSprite.Bounds().Dx()) / 2, Y: float64(playerSprite.Bounds().Dy()) / 2},
-			},
+			CollisionBounds: vector.Rect(
+				-float64(playerSprite.Bounds().Dx()) / 2, -float64(playerSprite.Bounds().Dy()) / 2,
+				float64(playerSprite.Bounds().Dx()) / 2, Y: float64(playerSprite.Bounds().Dy()) / 2,
+			),
 			Collided:    false,
 			AI:          ai,
 			MaxRespawns: g.respawns,
