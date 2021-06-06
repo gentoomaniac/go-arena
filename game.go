@@ -132,8 +132,8 @@ func (g *Game) WithBots(bots []string) *Game {
 			Sprite:       playerSprite,
 			Color:        color,
 			CollisionBounds: vector.Rect(
-				-float64(playerSprite.Bounds().Dx()) / 2, -float64(playerSprite.Bounds().Dy()) / 2,
-				float64(playerSprite.Bounds().Dx()) / 2, Y: float64(playerSprite.Bounds().Dy()) / 2,
+				-float64(playerSprite.Bounds().Dx())/2, -float64(playerSprite.Bounds().Dy())/2,
+				float64(playerSprite.Bounds().Dx())/2, float64(playerSprite.Bounds().Dy())/2,
 			),
 			Collided:    false,
 			AI:          ai,
@@ -300,41 +300,83 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 	return s[:len(s)-1]
 }
 
+func (g *Game) handleInput() {
+	g.Pressed = nil
+	g.tabPressed = false
+	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
+		if ebiten.IsKeyPressed(k) {
+			g.Pressed = append(g.Pressed, k)
+			switch k {
+			case ebiten.Key1:
+				g.selectedPlayer = g.players[0]
+			case ebiten.Key2:
+				g.selectedPlayer = g.players[1]
+			case ebiten.Key3:
+				g.selectedPlayer = g.players[2]
+			case ebiten.Key4:
+				g.selectedPlayer = g.players[3]
+			case ebiten.KeyEscape:
+				g.selectedPlayer = nil
+			case ebiten.KeyTab:
+				g.tabPressed = true
+			}
+		}
+	}
+	g.PressedBefore = g.Pressed
+
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		pointer := vector.Vec2{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
+		for _, p := range g.players {
+			if checkColisionPoint(pointer, p.CollisionBox()) {
+				g.selectedPlayer = p
+				break
+			}
+		}
+	}
+}
+
+func (g *Game) updateShells() {
+	// calculate shells
+	for i, s := range g.shells {
+		shellVector := vector.Vec2{
+			X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
+			Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
+		}
+
+		position := s.Position()
+		collisionPoint := vector.Vec2{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
+		if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
+			g.shells = remove(g.shells, i)
+			continue
+		} else {
+			position.X += shellVector.X
+		}
+		if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
+			g.shells = remove(g.shells, i)
+			continue
+		} else {
+			position.Y += shellVector.Y
+		}
+		s.SetPosition(position)
+	}
+}
+
+func (g *Game) isGameOver() {
+	var alivePlayers = 0
+	for _, p := range g.players {
+		if p.State == entities.Alive || p.NumberRespawns < p.MaxRespawns {
+			alivePlayers++
+		}
+	}
+	if alivePlayers <= 1 {
+		g.gameOver = true
+	}
+}
+
 func (g *Game) Update() error {
 	if !g.gameOver {
-		g.Pressed = nil
-		g.tabPressed = false
-		for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
-			if ebiten.IsKeyPressed(k) {
-				g.Pressed = append(g.Pressed, k)
-				switch k {
-				case ebiten.Key1:
-					g.selectedPlayer = g.players[0]
-				case ebiten.Key2:
-					g.selectedPlayer = g.players[1]
-				case ebiten.Key3:
-					g.selectedPlayer = g.players[2]
-				case ebiten.Key4:
-					g.selectedPlayer = g.players[3]
-				case ebiten.KeyEscape:
-					g.selectedPlayer = nil
-				case ebiten.KeyTab:
-					g.tabPressed = true
-				}
-			}
-		}
-		g.PressedBefore = g.Pressed
-
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			mx, my := ebiten.CursorPosition()
-			pointer := vector.Vec2{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
-			for _, p := range g.players {
-				if checkColisionPoint(pointer, p.CollisionBox()) {
-					g.selectedPlayer = p
-					break
-				}
-			}
-		}
+		g.handleInput()
 
 		// update all player positions
 		for _, p := range g.players {
@@ -346,40 +388,10 @@ func (g *Game) Update() error {
 			g.updatePlayer(p)
 		}
 
-		// calculate shells
-		for i, s := range g.shells {
-			shellVector := vector.Vec2{
-				X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
-				Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
-			}
-
-			position := s.Position()
-			collisionPoint := vector.Vec2{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
-			if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
-				g.shells = remove(g.shells, i)
-				continue
-			} else {
-				position.X += shellVector.X
-			}
-			if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
-				g.shells = remove(g.shells, i)
-				continue
-			} else {
-				position.Y += shellVector.Y
-			}
-			s.SetPosition(position)
-		}
+		g.updateShells()
 	}
 
-	var alivePlayers = 0
-	for _, p := range g.players {
-		if p.State == entities.Alive || p.NumberRespawns < p.MaxRespawns {
-			alivePlayers++
-		}
-	}
-	if alivePlayers <= 1 {
-		g.gameOver = true
-	}
+	g.isGameOver()
 	return nil
 }
 

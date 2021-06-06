@@ -1,8 +1,6 @@
 package entities
 
 import (
-	_ "embed"
-
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
