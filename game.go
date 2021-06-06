@@ -407,7 +407,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// ======== Draw Player =========
 	for _, p := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
-		playerOp = gfx.RotateImgOpts(p.Sprite, playerOp, int(p.Orientation))
+		playerOp = gfx.Rotate(p.Sprite, playerOp, int(p.Orientation))
 		playerOp.ColorM.Scale(p.Color.R, p.Color.G, p.Color.B, p.Color.Alpha)
 		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 
@@ -429,7 +429,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// ======== Draw Shells =========
 	for _, s := range g.shells {
 		shellOp := ebiten.DrawImageOptions{}
-		shellOp = gfx.RotateImgOpts(s.Sprite(), shellOp, int(s.Orientation()))
+		shellOp = gfx.Rotate(s.Sprite(), shellOp, int(s.Orientation()))
 
 		// // to move the image
 		shellOp.GeoM.Translate(s.Position().X-float64(s.Sprite().Bounds().Dx()/2), s.Position().Y-float64(s.Sprite().Bounds().Dy()/2))
