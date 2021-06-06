@@ -2,6 +2,8 @@
 
 _***This is a wip project!***_
 
+![Checks](https://github.com/gentoomaniac/go-arena/actions/workflows/checks.yaml/badge.svg?branch=main)
+
 ## What?
 go-arena is a [Robocode](https://robocode.sourceforge.io/) clone written in go and [ebiten](https://ebiten.org/)
 
