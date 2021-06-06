@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image/png"
 	"math"
 	"math/rand"
 	"plugin"
@@ -21,64 +20,17 @@ import (
 )
 
 var (
-	ColisionDamage    = 1 // how much health does a player loose on colisions
-	CannonCooldown    = 60
-	ShellDamage       = 15
-	ViewRange         = 2500
-	MaxSpeed          = 25.0
-	Acceleration      = 0.1
-	RespawnWaitTime   = 180 // number ticks
-	tankScalingFactor = 4.0
+	ColisionDamage  = 1 // how much health does a player loose on colisions
+	CannonCooldown  = 60
+	ShellDamage     = 15
+	ViewRange       = 2500
+	MaxSpeed        = 25.0
+	Acceleration    = 0.1
+	RespawnWaitTime = 180 // number ticks
 )
 
 func NewGame() *Game {
 	return &Game{}
-}
-
-//go:embed gfx/frame.png
-var frameRawImage []byte
-
-func loadFrameSprite() (*ebiten.Image, error) {
-	img, err := png.Decode(bytes.NewReader(frameRawImage))
-	if err != nil {
-		return nil, err
-	}
-	eimg := ebiten.NewImageFromImage(img)
-
-	frameOp := &ebiten.DrawImageOptions{}
-	frameOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	frameOp.GeoM.Scale(tankScalingFactor, tankScalingFactor)
-	frameOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(tankScalingFactor)), float64(eimg.Bounds().Dy()/2*int(tankScalingFactor)))
-
-	frameImage := ebiten.NewImage(eimg.Bounds().Dx()*int(tankScalingFactor), eimg.Bounds().Dy()*int(tankScalingFactor))
-
-	frameImage.DrawImage(eimg, frameOp)
-	return frameImage, nil
-}
-
-//go:embed gfx/tank.png
-var tankImage []byte
-
-func getPlayerSprite() (*ebiten.Image, error) {
-	img, err := png.Decode(bytes.NewReader(tankImage))
-	if err != nil {
-		return nil, err
-	}
-	eimg := ebiten.NewImageFromImage(img)
-
-	playerOp := &ebiten.DrawImageOptions{}
-	// to scale the imageplayer
-	playerOp.GeoM.Translate(float64(-eimg.Bounds().Dx()/2), float64(-eimg.Bounds().Dy()/2))
-	playerOp.GeoM.Scale(tankScalingFactor, tankScalingFactor)
-	playerOp.GeoM.Rotate(90 * math.Pi / 180)
-	playerOp.GeoM.Translate(float64(eimg.Bounds().Dx()/2*int(tankScalingFactor)), float64(eimg.Bounds().Dy()/2*int(tankScalingFactor)))
-
-	playerSprite := ebiten.NewImage(eimg.Bounds().Dx()*int(tankScalingFactor), eimg.Bounds().Dy()*int(tankScalingFactor))
-	log.Debug().Msgf("playerSprite: %s", playerSprite.Bounds())
-
-	playerSprite.DrawImage(eimg, playerOp)
-
-	return playerSprite, nil
 }
 
 type Game struct {
@@ -100,7 +52,7 @@ type Game struct {
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
 	g.screenBuffer = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight)
-	g.frameImage, err = loadFrameSprite()
+	g.frameImage, err = gfx.LoadFrameSprite()
 	if err != nil {
 		return
 	}
@@ -148,7 +100,7 @@ func (g *Game) WithBots(bots []string) *Game {
 		}
 		ai.Init()
 
-		playerSprite, err := getPlayerSprite()
+		playerSprite, err := gfx.GetPlayerSprite()
 		if err != nil {
 			return nil
 		}
