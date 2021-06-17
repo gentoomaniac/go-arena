@@ -2,6 +2,8 @@ package main
 
 import (
 	"image"
+	"math/rand"
+	"time"
 
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -27,6 +29,7 @@ func run(bots []string) {
 	tmxMap.CameraPosition = startPosition
 	log.Debug().Int("width", tmxMap.PixelWidth).Int("height", tmxMap.PixelHeight).Msg("map dimensions")
 
+	rand.Seed(time.Now().UTC().UnixNano())
 	game := NewGame().WithMap(tmxMap).WithScalingFactor(scalingFactor).WithRespawns(cli.Respawns).WithBots(bots)
 	err := game.Init()
 	if err != nil {

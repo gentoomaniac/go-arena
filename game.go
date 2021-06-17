@@ -116,7 +116,9 @@ func (g *Game) WithBots(bots []string) *Game {
 			color = &gfx.Color{R: .7, G: .7, B: 1, Alpha: 1}
 		}
 
-		spawnPoint := spawnPoints[index%len(spawnPoints)]
+		spawnIndex := rand.Int() % len(spawnPoints)
+		spawnPoint := spawnPoints[spawnIndex]
+		spawnPoints = removeSpawn(spawnPoints, spawnIndex)
 
 		player := &entities.Player{
 			Name:         ai.Name(),
