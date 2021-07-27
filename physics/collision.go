@@ -1,6 +1,8 @@
-package main
+package physics
 
 import (
+	"math"
+
 	"github.com/gentoomaniac/go-arena/vector"
 )
 
@@ -34,4 +36,8 @@ func Intersection(v1, v2, v3, v4 vector.Vec2) *vector.Vec2 {
 	}
 
 	return nil
+}
+
+func checkCollisionCircle(a vector.Circle, b vector.Circle) bool {
+	return math.Sqrt(math.Pow(a.Position.X-b.Position.X, 2)+math.Pow(a.Position.Y-b.Position.Y, 2)) <= a.Radius+b.Radius
 }
