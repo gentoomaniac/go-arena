@@ -1,4 +1,4 @@
-package main
+package physics
 
 import (
 	"fmt"
@@ -58,4 +58,48 @@ func TestIntersection(t *testing.T) {
 		})
 	}
 
+}
+
+func TestCollisionCircle(t *testing.T) {
+	var tests = []struct {
+		name string
+		a, b vector.Circle
+		want bool
+	}{
+		{
+			"same position",
+			vector.Circle{vector.Vec2{0, 0}, 1},
+			vector.Circle{vector.Vec2{0, 0}, 1},
+			true,
+		},
+		{
+			"intersecting",
+			vector.Circle{vector.Vec2{0, 0}, 1},
+			vector.Circle{vector.Vec2{1, 0}, 1},
+			true,
+		},
+		{
+			"touching",
+			vector.Circle{vector.Vec2{0, 0}, 1},
+			vector.Circle{vector.Vec2{2, 0}, 1},
+			true,
+		},
+		{
+			"not touching",
+			vector.Circle{vector.Vec2{0, 0}, 1},
+			vector.Circle{vector.Vec2{2.1, 0}, 1},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s: %s, %s", tt.name, tt.a, tt.b)
+
+		t.Run(testname, func(t *testing.T) {
+			result := checkCollisionCircle(tt.a, tt.b)
+			if result != tt.want {
+				t.Errorf("got '%t' want '%t'", result, tt.want)
+			}
+		})
+	}
 }
