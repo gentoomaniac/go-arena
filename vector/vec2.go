@@ -23,3 +23,11 @@ func (v Vec2) Unit() Vec2 {
 
 	return Vec2{v.X / magnitude, v.Y / magnitude}
 }
+
+func (v Vec2) ScalarProduct(m float64) Vec2 {
+	return Vec2{v.X * m, v.Y * m}
+}
+
+func (v Vec2) Sum(v2 Vec2) Vec2 {
+	return Vec2{v.X + v2.X, v.Y + v2.X}
+}
