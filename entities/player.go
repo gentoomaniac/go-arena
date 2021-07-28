@@ -1,8 +1,6 @@
 package entities
 
 import (
-	"image"
-
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -24,7 +22,7 @@ type Player struct {
 	State           State
 	Position        vector.Vec2
 	Movement        vector.Vec2
-	Hitbox          image.Rectangle
+	Acceleration    float64
 	Health          int
 	MaxHealth       int
 	Energy          int
@@ -32,9 +30,8 @@ type Player struct {
 	CurrentSpeed    float64
 	TargetSpeed     float64
 	MaxSpeed        float64
-	Acceleration    float64
 	Orientation     float64
-	CollisionBounds vector.Rectangle
+	CollisionRadius float64
 	Collided        bool
 	CannonCooldown  int
 	Hit             bool
@@ -45,19 +42,6 @@ type Player struct {
 	NumberRespawns  int
 	MaxRespawns     int
 	RespawnCooldown int
-}
-
-func (p Player) CollisionBox() vector.Rectangle {
-	return vector.Rectangle{
-		Min: vector.Vec2{
-			X: p.Position.X + p.CollisionBounds.Min.X,
-			Y: p.Position.Y + p.CollisionBounds.Min.Y,
-		},
-		Max: vector.Vec2{
-			X: p.Position.X + p.CollisionBounds.Max.X,
-			Y: p.Position.Y + p.CollisionBounds.Max.Y,
-		},
-	}
 }
 
 func (p *Player) UpdateSpeed(newSpeed float64) {
