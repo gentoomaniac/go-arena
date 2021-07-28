@@ -42,8 +42,8 @@ func Distance(a vector.Vec2, b vector.Vec2) float64 {
 	return math.Sqrt(math.Pow(a.X-b.X, 2) + math.Pow(a.Y-b.Y, 2))
 }
 
-func DoCirclesOverlap(a vector.Circle, b vector.Circle) bool {
-	return math.Sqrt(math.Pow(a.Position.X-b.Position.X, 2)+math.Pow(a.Position.Y-b.Position.Y, 2)) <= a.Radius+b.Radius
+func DistanceBetweenCircles(a vector.Circle, b vector.Circle) float64 {
+	return math.Sqrt(math.Pow(a.Position.X-b.Position.X, 2)+math.Pow(a.Position.Y-b.Position.Y, 2)) - (a.Radius + b.Radius)
 }
 
 func DoMovingCirclesCollide(aCircle vector.Circle, aVelocity vector.Vec2, bCircle vector.Circle, bVelocity vector.Vec2) float64 {

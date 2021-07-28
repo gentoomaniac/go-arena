@@ -9,14 +9,13 @@ import (
 func NewShell() *Shell {
 	s := &Shell{}
 	s.sprite = gfx.GetShellImage()
-	s.collisionRadius = float64(s.sprite.Bounds().Dx()) / 2
 
 	return s
 }
 
 type Shell struct {
 	name            string
-	collisionRadius float64
+	CollisionRadius float64
 	Position        vector.Vec2
 	Movement        vector.Vec2
 	Orientation     float64
