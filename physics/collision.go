@@ -6,7 +6,7 @@ import (
 	"github.com/gentoomaniac/go-arena/vector"
 )
 
-func checkColisionPoint(a vector.Vec2, b vector.Rectangle) bool {
+func PointInRectangle(a vector.Vec2, b vector.Rectangle) bool {
 	if a.X >= b.Min.X &&
 		a.X <= b.Max.X &&
 		a.Y >= b.Min.Y &&
@@ -15,11 +15,11 @@ func checkColisionPoint(a vector.Vec2, b vector.Rectangle) bool {
 	}
 	return false
 }
-func checkColisionBox(a vector.Rectangle, b vector.Rectangle) bool {
-	return checkColisionPoint(a.Min, b) ||
-		checkColisionPoint(vector.Vec2{X: a.Min.X, Y: a.Max.Y}, b) ||
-		checkColisionPoint(a.Max, b) ||
-		checkColisionPoint(vector.Vec2{X: a.Max.X, Y: a.Min.Y}, b)
+func DoBoxesCollide(a vector.Rectangle, b vector.Rectangle) bool {
+	return PointInRectangle(a.Min, b) ||
+		PointInRectangle(vector.Vec2{X: a.Min.X, Y: a.Max.Y}, b) ||
+		PointInRectangle(a.Max, b) ||
+		PointInRectangle(vector.Vec2{X: a.Max.X, Y: a.Min.Y}, b)
 }
 
 // calculates the intersection point of the line segments defined by (v1, v2) and (v3, v4)
@@ -38,6 +38,10 @@ func Intersection(v1, v2, v3, v4 vector.Vec2) *vector.Vec2 {
 	return nil
 }
 
-func checkCollisionCircle(a vector.Circle, b vector.Circle) bool {
+func Distance(a vector.Vec2, b vector.Vec2) float64 {
+	return math.Sqrt(math.Pow(a.X-b.X, 2) + math.Pow(a.Y-b.Y, 2))
+}
+
+func DoCirclesCollide(a vector.Circle, b vector.Circle) bool {
 	return math.Sqrt(math.Pow(a.Position.X-b.Position.X, 2)+math.Pow(a.Position.Y-b.Position.Y, 2)) <= a.Radius+b.Radius
 }
