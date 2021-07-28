@@ -174,9 +174,11 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			if distance <= 0 {
 				displaceBy := math.Abs(distance) / 2
 				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+				// ToDo: This can move a tank out of the level boundaries
 				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
 				e.Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
-
+				p.Collided = true
+				e.Collided = true
 				distance = physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
 			}
 
