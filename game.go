@@ -169,6 +169,18 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	for _, e := range g.players {
 		if e != p {
 			distance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+
+			// check for collision and displace if collided
+			if distance <= 0 {
+				displaceBy := math.Abs(distance) / 2
+				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
+				e.Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
+
+				distance = physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+			}
+
+			// add visible enemies to input data
 			if distance <= float64(ViewRange) {
 				angle := (math.Atan2(e.Position.Y-p.Position.Y, e.Position.X-p.Position.X) * 180 / math.Pi) - p.Orientation
 				enemies = append(enemies, &entities.Enemy{
