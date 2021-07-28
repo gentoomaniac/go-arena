@@ -12,6 +12,7 @@ import (
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/gentoomaniac/go-arena/entities"
 	"github.com/gentoomaniac/go-arena/gfx"
+	"github.com/gentoomaniac/go-arena/physics"
 	"github.com/gentoomaniac/go-arena/ui"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -27,6 +28,7 @@ var (
 	MaxSpeed        = 25.0
 	Acceleration    = 0.1
 	RespawnWaitTime = 180 // number ticks
+	ShellSpeed      = 30.0
 )
 
 func NewGame() *Game {
@@ -79,6 +81,15 @@ func (g *Game) WithRespawns(respawns int) *Game {
 	return g
 }
 
+func removeSpawn(s []*ebitmx.Object, i int) []*ebitmx.Object {
+	if i >= len(s) || i < 0 {
+		return s
+	}
+
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
+}
+
 func (g *Game) WithBots(bots []string) *Game {
 	var color *gfx.Color
 	spawnPoints := g.arenaMap.GetObjectGroupByName("spawn_points").Objects
@@ -121,25 +132,22 @@ func (g *Game) WithBots(bots []string) *Game {
 		spawnPoints = removeSpawn(spawnPoints, spawnIndex)
 
 		player := &entities.Player{
-			Name:         ai.Name(),
-			State:        entities.Alive,
-			Position:     vector.Vec2{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
-			Health:       100,
-			MaxHealth:    100,
-			Energy:       100,
-			MaxEnergy:    100,
-			MaxSpeed:     MaxSpeed,
-			Acceleration: Acceleration,
-			Orientation:  float64(rand.Int() % 360),
-			Sprite:       playerSprite,
-			Color:        color,
-			CollisionBounds: vector.Rect(
-				-float64(playerSprite.Bounds().Dx())/2, -float64(playerSprite.Bounds().Dy())/2,
-				float64(playerSprite.Bounds().Dx())/2, float64(playerSprite.Bounds().Dy())/2,
-			),
-			Collided:    false,
-			AI:          ai,
-			MaxRespawns: g.respawns,
+			Name:            ai.Name(),
+			State:           entities.Alive,
+			Position:        vector.Vec2{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
+			Health:          100,
+			MaxHealth:       100,
+			Energy:          100,
+			MaxEnergy:       100,
+			MaxSpeed:        MaxSpeed,
+			Acceleration:    Acceleration,
+			Orientation:     float64(rand.Int() % 360),
+			Sprite:          playerSprite,
+			Color:           color,
+			CollisionRadius: float64(playerSprite.Bounds().Dx()) / 2,
+			Collided:        false,
+			AI:              ai,
+			MaxRespawns:     g.respawns,
 		}
 		player.Animations = make(map[gfx.AnimationType]*gfx.Animation)
 
@@ -195,9 +203,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				p.CannonCooldown = CannonCooldown
 				newShell := entities.NewShell()
 				newShell.Source = p
-				newShell.SetOrientation(p.Orientation)
-				newShell.SetPosition(p.Position)
-				newShell.SetSpeed(30)
+				newShell.Movement = vector.Vec2{
+					X: ShellSpeed * math.Cos(p.Orientation*math.Pi/180),
+					Y: ShellSpeed * math.Sin(p.Orientation*math.Pi/180),
+				}
+				newShell.Orientation = p.Orientation
+				newShell.Position = p.Position
 				newShell.Damage = ShellDamage
 				g.shells = append(g.shells, newShell)
 			}
@@ -225,12 +236,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		Y: p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180),
 	}
 
-	//oldPos := p.Position
-
 	// check arena bounds
 	collisionPoint := vector.Vec2{X: p.Position.X + p.Movement.X, Y: p.Position.Y + p.Movement.Y}
 	p.Collided = false
-	if int(collisionPoint.X) < 0+p.Hitbox.Dx() || int(collisionPoint.X) > g.arenaMap.PixelWidth-p.Hitbox.Dx() {
+	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}) != nil ||
+		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
+		log.Debug().Str("name", p.Name).Str("axis", "x").Msg("level boundary hit")
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
@@ -240,13 +251,15 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 		p.Movement.X = 0
 	}
-	if int(collisionPoint.Y) < 0+p.Hitbox.Dy() || int(collisionPoint.Y) > g.arenaMap.PixelHeight-p.Hitbox.Dy() {
+	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}) != nil ||
+		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
+		log.Debug().Str("name", p.Name).Msg("level boundary hit")
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
-			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
+			log.Info().Str("name", p.Name).Str("axis", "y").Msg("crashed into level boundary")
 		}
 		p.Movement.Y = 0
 	}
@@ -255,7 +268,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	p.Hit = false
 	for i, shell := range g.shells {
 		if shell.Source != p {
-			if checkColisionBox(p.CollisionBox(), shell.CollisionBox()) || checkColisionBox(shell.CollisionBox(), p.CollisionBox()) {
+			newPos := vector.Vec2{shell.Position.X + shell.Movement.X, shell.Position.Y + shell.Movement.Y}
+			// ToDo: this doesn't take into account the collision radius!
+			if physics.Intersection(shell.Position, newPos, p.Position, collisionPoint) != nil {
 				g.shells = remove(g.shells, i)
 				p.Hit = true
 				p.Health -= shell.Damage
@@ -268,29 +283,30 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	mapObjects := g.arenaMap.GetObjectGroupByName("collisionmap").Objects
-	pObject := vector.Rect(
-		p.CollisionBox().Min.X+p.Movement.X,
-		p.CollisionBox().Min.Y+p.Movement.Y,
-		p.CollisionBox().Max.X+p.Movement.X,
-		p.CollisionBox().Max.Y+p.Movement.Y,
-	)
-	p.Collided = false
-	for _, object := range mapObjects {
-		objectBox := vector.Rect(float64(object.X), float64(object.Y), float64(object.X+object.Width), float64(object.Y+object.Height))
-		if checkColisionBox(pObject, objectBox) || checkColisionBox(objectBox, pObject) {
-			p.Collided = true
-			p.Health -= ColisionDamage
-			if p.Health <= 0 {
-				p.RespawnCooldown = RespawnWaitTime
-				p.State = entities.Dead
-				log.Info().Str("name", p.Name).Str("object", object.Name).Int("max", p.MaxRespawns).Int("spawns", p.NumberRespawns).Msgf("crashed into object")
-			}
-			p.CurrentSpeed = 0.0
-			p.Movement.X = 0
-			p.Movement.Y = 0
-		}
-	}
+	//ToDo: Object collisions are currently not working
+	// mapObjects := g.arenaMap.GetObjectGroupByName("collisionmap").Objects
+	// pObject := vector.Rect(
+	// 	p.CollisionBox().Min.X+p.Movement.X,
+	// 	p.CollisionBox().Min.Y+p.Movement.Y,
+	// 	p.CollisionBox().Max.X+p.Movement.X,
+	// 	p.CollisionBox().Max.Y+p.Movement.Y,
+	// )
+	// p.Collided = false
+	// for _, object := range mapObjects {
+	// 	objectBox := vector.Rect(float64(object.X), float64(object.Y), float64(object.X+object.Width), float64(object.Y+object.Height))
+	// 	if checkColisionBox(pObject, objectBox) || checkColisionBox(objectBox, pObject) {
+	// 		p.Collided = true
+	// 		p.Health -= ColisionDamage
+	// 		if p.Health <= 0 {
+	// 			p.RespawnCooldown = RespawnWaitTime
+	// 			p.State = entities.Dead
+	// 			log.Info().Str("name", p.Name).Str("object", object.Name).Int("max", p.MaxRespawns).Int("spawns", p.NumberRespawns).Msgf("crashed into object")
+	// 		}
+	// 		p.CurrentSpeed = 0.0
+	// 		p.Movement.X = 0
+	// 		p.Movement.Y = 0
+	// 	}
+	// }
 }
 
 func remove(s []*entities.Shell, i int) []*entities.Shell {
@@ -330,7 +346,7 @@ func (g *Game) handleInput() {
 		mx, my := ebiten.CursorPosition()
 		pointer := vector.Vec2{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
 		for _, p := range g.players {
-			if checkColisionPoint(pointer, p.CollisionBox()) {
+			if physics.DoCirclesOverlap(vector.Circle{pointer, 1}, vector.Circle{p.Position, p.CollisionRadius}) {
 				g.selectedPlayer = p
 				break
 			}
@@ -341,26 +357,19 @@ func (g *Game) handleInput() {
 func (g *Game) updateShells() {
 	// calculate shells
 	for i, s := range g.shells {
-		shellVector := vector.Vec2{
-			X: float64(s.Speed()) * math.Cos(s.Orientation()*math.Pi/180),
-			Y: float64(s.Speed()) * math.Sin(s.Orientation()*math.Pi/180),
-		}
-
-		position := s.Position()
-		collisionPoint := vector.Vec2{X: position.X + shellVector.X, Y: position.Y + shellVector.Y}
+		collisionPoint := vector.Vec2{X: s.Position.X + s.Movement.X, Y: s.Position.Y + s.Movement.Y}
 		if collisionPoint.X < 0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) {
 			g.shells = remove(g.shells, i)
 			continue
 		} else {
-			position.X += shellVector.X
+			s.Position.X += s.Movement.X
 		}
 		if collisionPoint.Y < 0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) {
 			g.shells = remove(g.shells, i)
 			continue
 		} else {
-			position.Y += shellVector.Y
+			s.Position.Y += s.Movement.Y
 		}
-		s.SetPosition(position)
 	}
 }
 
@@ -431,10 +440,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// ======== Draw Shells =========
 	for _, s := range g.shells {
 		shellOp := ebiten.DrawImageOptions{}
-		shellOp = gfx.Rotate(s.Sprite(), shellOp, int(s.Orientation()))
+		shellOp = gfx.Rotate(s.Sprite(), shellOp, int(s.Orientation))
 
 		// // to move the image
-		shellOp.GeoM.Translate(s.Position().X-float64(s.Sprite().Bounds().Dx()/2), s.Position().Y-float64(s.Sprite().Bounds().Dy()/2))
+		shellOp.GeoM.Translate(s.Position.X-float64(s.Sprite().Bounds().Dx()/2), s.Position.Y-float64(s.Sprite().Bounds().Dy()/2))
 
 		g.screenBuffer.DrawImage(s.Sprite(), &shellOp)
 	}
