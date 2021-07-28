@@ -144,7 +144,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			Orientation:     float64(rand.Int() % 360),
 			Sprite:          playerSprite,
 			Color:           color,
-			CollisionRadius: float64(playerSprite.Bounds().Dx()) / 2,
+			CollisionRadius: (float64(playerSprite.Bounds().Dx()) / 2) * .6,
 			Collided:        false,
 			AI:              ai,
 			MaxRespawns:     g.respawns,
@@ -210,6 +210,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				newShell.Orientation = p.Orientation
 				newShell.Position = p.Position
 				newShell.Damage = ShellDamage
+				newShell.CollisionRadius = float64(newShell.Sprite().Bounds().Dx()) / 2
+
 				g.shells = append(g.shells, newShell)
 			}
 		}
@@ -241,7 +243,6 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	p.Collided = false
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
-		log.Debug().Str("name", p.Name).Str("axis", "x").Msg("level boundary hit")
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
@@ -253,7 +254,6 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	}
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
-		log.Debug().Str("name", p.Name).Msg("level boundary hit")
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
@@ -268,9 +268,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	p.Hit = false
 	for i, shell := range g.shells {
 		if shell.Source != p {
-			newPos := vector.Vec2{shell.Position.X + shell.Movement.X, shell.Position.Y + shell.Movement.Y}
-			// ToDo: this doesn't take into account the collision radius!
-			if physics.Intersection(shell.Position, newPos, p.Position, collisionPoint) != nil {
+			if distance := physics.DistanceBetweenCircles(
+				vector.Circle{shell.Position, shell.Source.CollisionRadius},
+				vector.Circle{p.Position, p.CollisionRadius}); distance < 0 {
+
+				// ToDo: This makes the shell disappear before it visually hit
+				// the shell should get a hit flag and get removed after the next draw
 				g.shells = remove(g.shells, i)
 				p.Hit = true
 				p.Health -= shell.Damage
@@ -346,7 +349,7 @@ func (g *Game) handleInput() {
 		mx, my := ebiten.CursorPosition()
 		pointer := vector.Vec2{X: float64(mx) / g.scalingFactor, Y: float64(my) / g.scalingFactor}
 		for _, p := range g.players {
-			if physics.DoCirclesOverlap(vector.Circle{pointer, 1}, vector.Circle{p.Position, p.CollisionRadius}) {
+			if physics.DistanceBetweenCircles(vector.Circle{pointer, 1}, vector.Circle{p.Position, p.CollisionRadius}) < 0 {
 				g.selectedPlayer = p
 				break
 			}
