@@ -168,7 +168,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	enemies := make([]*entities.Enemy, 0)
 	for _, e := range g.players {
 		if e != p {
-			distance := math.Sqrt(math.Pow(p.Position.X-e.Position.X, 2) + math.Pow(p.Position.Y-e.Position.Y, 2))
+			distance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
 			if distance <= float64(ViewRange) {
 				angle := (math.Atan2(e.Position.Y-p.Position.Y, e.Position.X-p.Position.X) * 180 / math.Pi) - p.Orientation
 				enemies = append(enemies, &entities.Enemy{
