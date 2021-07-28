@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestIntersection(t *testing.T) {
+func TestLength(t *testing.T) {
 	maxError := 0.01
 	var tests = []struct {
 		name string

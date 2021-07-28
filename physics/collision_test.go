@@ -60,7 +60,46 @@ func TestIntersection(t *testing.T) {
 
 }
 
-func TestCollisionCircle(t *testing.T) {
+func TestDistance(t *testing.T) {
+	maxError := 0.01
+	var tests = []struct {
+		name string
+		a, b vector.Vec2
+		want float64
+	}{
+		{
+			"same point",
+			vector.Vec2{0, 0},
+			vector.Vec2{0, 0},
+			0,
+		},
+		{
+			"from origin",
+			vector.Vec2{0, 0},
+			vector.Vec2{1, 1},
+			1.41421356237,
+		},
+		{
+			"negative to positive",
+			vector.Vec2{-1, -1},
+			vector.Vec2{1, 1},
+			2.82842712475,
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s: %s, %s", tt.name, tt.a, tt.b)
+
+		t.Run(testname, func(t *testing.T) {
+			result := Distance(tt.a, tt.b)
+			if result > tt.want*(1+maxError) || result < tt.want*(1-maxError) {
+				t.Errorf("result exceeds error threshold, got '%f' want '%f'", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestDoCirclesOverlap(t *testing.T) {
 	var tests = []struct {
 		name string
 		a, b vector.Circle
@@ -96,7 +135,7 @@ func TestCollisionCircle(t *testing.T) {
 		testname := fmt.Sprintf("%s: %s, %s", tt.name, tt.a, tt.b)
 
 		t.Run(testname, func(t *testing.T) {
-			result := checkCollisionCircle(tt.a, tt.b)
+			result := DoCirclesOverlap(tt.a, tt.b)
 			if result != tt.want {
 				t.Errorf("got '%t' want '%t'", result, tt.want)
 			}
