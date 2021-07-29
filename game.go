@@ -27,6 +27,7 @@ var (
 	ViewRange       = 2500
 	MaxSpeed        = 25.0
 	Acceleration    = 0.1
+	Friction        = -(Acceleration / 2)
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
 )
@@ -168,18 +169,49 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	enemies := make([]*entities.Enemy, 0)
 	for _, e := range g.players {
 		if e != p {
-			distance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+			distance := physics.Distance(p.Position, e.Position)
+			circleDistance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
 
-			// check for collision and displace if collided
-			if distance <= 0 {
-				displaceBy := math.Abs(distance) / 2
+			// collisions: https://www.youtube.com/watch?v=LPzyNOHY3A4&ab_channel=javidx9
+			if circleDistance < 0 {
+				// check for static collision
+				displaceBy := math.Abs(circleDistance) / 2
 				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+
 				// ToDo: This can move a tank out of the level boundaries
 				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
 				e.Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
-				p.Collided = true
-				e.Collided = true
-				distance = physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+				p.CollidedWithTank = true
+				e.CollidedWithTank = true
+
+				// Distance between center points
+				distance = physics.Distance(p.Position, e.Position)
+				vecPE := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+				// Normal between balls
+				normal := vecPE.Unit()
+				// Tangent
+				tangent := vector.Vec2{-normal.Y, normal.X}
+
+				// Dot Product Tangent
+				dpTanP := p.Velocity.DotProduct(tangent)
+				dpTanE := e.Velocity.DotProduct(tangent)
+
+				// Dot Product Normal
+				dpNormP := p.Velocity.DotProduct(normal)
+				dpNormE := e.Velocity.DotProduct(normal)
+
+				// Conservation of momentum in 1D
+				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
+				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
+				// // Conservation of momentum in 1D
+
+				// Update ball velocities
+				p.Velocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
+				p.Velocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				e.Velocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				e.Velocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+
+				distance = physics.Distance(p.Position, e.Position)
 			}
 
 			// add visible enemies to input data
@@ -196,15 +228,16 @@ func (g *Game) updatePlayer(p *entities.Player) {
 
 	if p.State == entities.Alive {
 		output := p.AI.Compute(entities.AIInput{
-			Position:     p.Position,
-			TargetSpeed:  p.TargetSpeed,
-			MaxSpeed:     p.MaxSpeed,
-			CurrentSpeed: p.CurrentSpeed,
-			Orientation:  p.Orientation,
-			Collided:     p.Collided,
-			Hit:          p.Hit,
-			CannonReady:  p.CannonCooldown <= 0,
-			Enemy:        enemies,
+			Position:         p.Position,
+			TargetSpeed:      p.TargetSpeed,
+			MaxSpeed:         p.MaxSpeed,
+			CurrentSpeed:     p.CurrentSpeed,
+			Orientation:      p.Orientation,
+			Collided:         p.Collided,
+			CollidedWithTank: p.CollidedWithTank,
+			Hit:              p.Hit,
+			CannonReady:      p.CannonCooldown <= 0,
+			Enemy:            enemies,
 		})
 
 		p.UpdateSpeed(output.Speed)
