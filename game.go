@@ -27,10 +27,10 @@ var (
 	ViewRange       = 2500
 	MaxSpeed        = 25.0
 	Acceleration    = 0.05
-	Friction        = -(Acceleration * 2)
+	Friction        = Acceleration * 2
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
-	UpdateSpeed     = 10
+	UpdateSpeed     = 5
 )
 
 func NewGame() *Game {
@@ -135,6 +135,7 @@ func (g *Game) WithBots(bots []string) *Game {
 		spawnPoints = removeSpawn(spawnPoints, spawnIndex)
 
 		player := &entities.Player{
+			ID:              index,
 			Name:            ai.Name(),
 			State:           entities.Alive,
 			Position:        vector.Vec2{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
@@ -173,54 +174,12 @@ func (g *Game) WithBots(bots []string) *Game {
 
 func (g *Game) updatePlayer(p *entities.Player) {
 	p.UpdateImpactVelocity()
+	velocity := p.Velocity.Sum(p.ImpactVelocity)
 
 	enemies := make([]*entities.Enemy, 0)
 	for _, e := range g.players {
 		if e != p {
 			distance := physics.Distance(p.Position, e.Position)
-			circleDistance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
-
-			// collisions: https://www.youtube.com/watch?v=LPzyNOHY3A4&ab_channel=javidx9
-			if circleDistance < 0 {
-				// check for static collision
-				displaceBy := math.Abs(circleDistance) / 2
-				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
-
-				// ToDo: This can move a tank out of the level boundaries
-				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
-				e.Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
-				p.CollidedWithTank = true
-				e.CollidedWithTank = true
-
-				// vector between center points
-				vecPE := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
-
-				// normal vector between balls
-				normal := vecPE.Unit()
-
-				// Tangent
-				tangent := vector.Vec2{-normal.Y, normal.X}
-
-				// Dot Product Tangent
-				dpTanP := p.Velocity.DotProduct(tangent)
-				dpTanE := e.Velocity.DotProduct(tangent)
-
-				// Dot Product Normal
-				dpNormP := p.Velocity.DotProduct(normal)
-				dpNormE := e.Velocity.DotProduct(normal)
-
-				// Conservation of momentum in 1D
-				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
-				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
-
-				// Update impact velocity
-				p.ImpactVelocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
-				p.ImpactVelocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				e.ImpactVelocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				e.ImpactVelocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
-
-				distance = physics.Distance(p.Position, e.Position)
-			}
 
 			// add visible enemies to input data
 			if distance <= float64(ViewRange) {
@@ -248,9 +207,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Enemy:            enemies,
 		})
 
+		p.Orientation = p.Orientation + output.OrientationChange
 		p.UpdateVelocity(output.Speed)
 
-		p.Orientation = p.Orientation + output.OrientationChange
 		if p.CannonCooldown > 0 {
 			p.CannonCooldown--
 		} else {
@@ -263,7 +222,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 					Y: ShellSpeed * math.Sin(p.Orientation*math.Pi/180),
 				}
 				newShell.Orientation = p.Orientation
-				newShell.Position = p.Position
+				newShell.Position = p.Position //.Sum(p.Velocity.WithLength(p.Velocity.Length() + p.CollisionRadius))
 				newShell.Damage = ShellDamage
 				newShell.CollisionRadius = float64(newShell.Sprite().Bounds().Dx()) / 2
 
@@ -288,10 +247,55 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	if p.ImpactVelocity.Length() > 0 {
-		log.Debug().Str("vector", p.ImpactVelocity.String()).Str("player", p.Name).Msg("ImpactVelocity")
+	// Collisions
+	for index, e := range g.players {
+		if e != p {
+			circleDistance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+
+			// collisions: https://www.youtube.com/watch?v=LPzyNOHY3A4&ab_channel=javidx9
+			if circleDistance < 0 {
+				eVelocity := e.Velocity.Sum(e.ImpactVelocity)
+
+				// check for static collision
+				displaceBy := math.Abs(circleDistance) / 2
+				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+
+				// ToDo: This can move a tank out of the level boundaries
+				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
+				g.players[index].Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
+				p.CollidedWithTank = true
+				g.players[index].CollidedWithTank = true
+
+				// vector between center points
+				vecPE := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+
+				// normal vector between balls
+				normal := vecPE.Unit()
+
+				// Tangent
+				tangent := vector.Vec2{-normal.Y, normal.X}
+
+				// Dot Product Tangent
+				dpTanP := velocity.DotProduct(tangent)
+				dpTanE := eVelocity.DotProduct(tangent)
+
+				// Dot Product Normal
+				dpNormP := velocity.DotProduct(normal)
+				dpNormE := eVelocity.DotProduct(normal)
+
+				// Conservation of momentum in 1D
+				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
+				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
+
+				// Update impact velocity
+				p.ImpactVelocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
+				p.ImpactVelocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				g.players[index].ImpactVelocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				g.players[index].ImpactVelocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+
+			}
+		}
 	}
-	velocity := p.Velocity.Sum(p.ImpactVelocity)
 
 	// check arena bounds
 	collisionPoint := vector.Vec2{X: p.Position.X + velocity.X, Y: p.Position.Y + velocity.Y}
@@ -300,23 +304,27 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
 		p.Collided = true
 		p.Health -= ColisionDamage
+		log.Debug().Str("name", p.Name).Msg("collided with X level boundary")
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
 		p.Velocity.X = 0
+		p.ImpactVelocity.X = 0
 	}
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
 		p.Collided = true
 		p.Health -= ColisionDamage
+		log.Debug().Str("name", p.Name).Msg("collided with Y level boundary")
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Str("axis", "y").Msg("crashed into level boundary")
 		}
 		p.Velocity.Y = 0
+		p.ImpactVelocity.Y = 0
 	}
 
 	// check hit by shell
@@ -395,6 +403,14 @@ func (g *Game) handleInput() {
 				g.selectedPlayer = nil
 			case ebiten.KeyTab:
 				g.tabPressed = true
+			case ebiten.KeyArrowLeft:
+				if UpdateSpeed > 1 {
+					UpdateSpeed -= 1
+				}
+			case ebiten.KeyArrowRight:
+				if UpdateSpeed < 10 {
+					UpdateSpeed += 1
+				}
 			}
 		}
 	}
@@ -444,14 +460,14 @@ func (g *Game) isGameOver() {
 }
 
 func (g *Game) Update() error {
-	if g.Tick%UpdateSpeed == 0 {
+	if g.Tick%UpdateSpeed == 0 || UpdateSpeed <= 0 {
 		if !g.gameOver {
 			g.handleInput()
 
 			// update all player positions
 			for _, p := range g.players {
-				p.Position.X += p.Velocity.X
-				p.Position.Y += p.Velocity.Y
+				p.Position.X += p.Velocity.X + p.ImpactVelocity.X
+				p.Position.Y += p.Velocity.Y + p.ImpactVelocity.Y
 			}
 
 			for _, p := range g.players {
@@ -500,6 +516,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			frameOp.GeoM.Translate(p.Position.X-float64(g.frameImage.Bounds().Dx())/2, p.Position.Y-float64(g.frameImage.Bounds().Dy())/2)
 			g.screenBuffer.DrawImage(g.frameImage, &frameOp)
 		}
+		//ebitenutil.DrawRect(g.screenBuffer, p.Position.X-p.CollisionRadius, p.Position.Y-p.CollisionRadius, p.CollisionRadius*2, p.CollisionRadius*2, color.Gray{})
 	}
 
 	// ======== Draw Shells =========
@@ -507,10 +524,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		shellOp := ebiten.DrawImageOptions{}
 		shellOp = gfx.Rotate(s.Sprite(), shellOp, int(s.Orientation))
 
-		// // to move the image
+		// to move the image
 		shellOp.GeoM.Translate(s.Position.X-float64(s.Sprite().Bounds().Dx()/2), s.Position.Y-float64(s.Sprite().Bounds().Dy()/2))
 
 		g.screenBuffer.DrawImage(s.Sprite(), &shellOp)
+		//ebitenutil.DrawRect(g.screenBuffer, s.Position.X-s.CollisionRadius, s.Position.Y-s.CollisionRadius, s.CollisionRadius*2, s.CollisionRadius*2, color.Gray{})
 	}
 
 	// ======== Screenbuffer ========
@@ -533,6 +551,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.selectedPlayer != nil {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Selected Player: %s", g.selectedPlayer.Name), 16, 64)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d", g.selectedPlayer.Health, g.selectedPlayer.MaxHealth), 16, 80)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Position: %s", g.selectedPlayer.Position), 16, 96)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Velocity: %s", g.selectedPlayer.Velocity), 16, 112)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("ImpactVelocity: %s", g.selectedPlayer.ImpactVelocity), 16, 128)
 	} else {
 		for i, p := range g.players {
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s H(%d/%d) S(%.0f/%.0f)", i+1, p.Name, p.Health, p.MaxHealth, math.Round(p.Velocity.Length()), p.MaxSpeed), 16, 48+i*16)

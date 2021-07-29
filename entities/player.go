@@ -1,8 +1,6 @@
 package entities
 
 import (
-	"math"
-
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,6 +18,7 @@ func (s State) String() string {
 }
 
 type Player struct {
+	ID               int
 	Name             string
 	State            State
 	Position         vector.Vec2
@@ -58,16 +57,23 @@ func (p *Player) UpdateVelocity(newSpeed float64) {
 		p.TargetSpeed = -p.MaxSpeed
 	}
 
-	if diff := p.CurrentSpeed - p.TargetSpeed; diff > p.Friction {
-		p.CurrentSpeed += p.Friction
-	} else if diff > p.Acceleration {
-		p.CurrentSpeed += p.Acceleration
+	// ToDo: When the tanks start the velocity is 0 so all calculations will be 0 and tanks not move
+
+	if diff := p.Velocity.Length() - p.TargetSpeed; diff > p.TargetSpeed {
+		if diff > p.Friction {
+			p.Velocity = p.Velocity.WithLength(p.Velocity.Length() - p.Friction)
+		} else {
+			p.Velocity = p.Velocity.WithLength(p.TargetSpeed)
+		}
 	} else {
-		p.CurrentSpeed = p.TargetSpeed
+		if diff > p.Acceleration {
+			p.Velocity = p.Velocity.WithLength(p.Velocity.Length() + p.Acceleration)
+		} else {
+			p.Velocity = p.Velocity.WithLength(p.TargetSpeed)
+		}
 	}
 
-	p.Velocity.X = p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180)
-	p.Velocity.Y = p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180)
+	//ToDo: need orientation change
 }
 
 func (p *Player) UpdateImpactVelocity() {
