@@ -18,30 +18,34 @@ func (s State) String() string {
 }
 
 type Player struct {
-	Name            string
-	State           State
-	Position        vector.Vec2
-	Movement        vector.Vec2
-	Acceleration    float64
-	Health          int
-	MaxHealth       int
-	Energy          int
-	MaxEnergy       int
-	CurrentSpeed    float64
-	TargetSpeed     float64
-	MaxSpeed        float64
-	Orientation     float64
-	CollisionRadius float64
-	Collided        bool
-	CannonCooldown  int
-	Hit             bool
-	Sprite          *ebiten.Image
-	Color           *gfx.Color
-	AI              AI
-	Animations      map[gfx.AnimationType]*gfx.Animation
-	NumberRespawns  int
-	MaxRespawns     int
-	RespawnCooldown int
+	Name             string
+	State            State
+	Position         vector.Vec2
+	Acceleration     vector.Vec2
+	MaxAcceleration  float64
+	Friction         float64
+	Velocity         vector.Vec2
+	Mass             float64
+	Health           int
+	MaxHealth        int
+	Energy           int
+	MaxEnergy        int
+	CurrentSpeed     float64
+	TargetSpeed      float64
+	MaxSpeed         float64
+	Orientation      float64
+	CollisionRadius  float64
+	Collided         bool
+	CollidedWithTank bool
+	CannonCooldown   int
+	Hit              bool
+	Sprite           *ebiten.Image
+	Color            *gfx.Color
+	AI               AI
+	Animations       map[gfx.AnimationType]*gfx.Animation
+	NumberRespawns   int
+	MaxRespawns      int
+	RespawnCooldown  int
 }
 
 func (p *Player) UpdateSpeed(newSpeed float64) {
