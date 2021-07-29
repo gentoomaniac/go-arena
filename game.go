@@ -142,7 +142,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			Energy:          100,
 			MaxEnergy:       100,
 			MaxSpeed:        MaxSpeed,
-			MaxAcceleration: Acceleration,
+			Acceleration:    Acceleration,
 			Friction:        Friction,
 			Orientation:     float64(rand.Int() % 360),
 			Sprite:          playerSprite,
@@ -282,13 +282,10 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	p.Movement = vector.Vec2{
-		X: p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180),
-		Y: p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180),
-	}
+	//p.Velocity = p.Velocity.Sum(p.Acceleration)
 
 	// check arena bounds
-	collisionPoint := vector.Vec2{X: p.Position.X + p.Movement.X, Y: p.Position.Y + p.Movement.Y}
+	collisionPoint := vector.Vec2{X: p.Position.X + p.Velocity.X, Y: p.Position.Y + p.Velocity.Y}
 	p.Collided = false
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
@@ -299,7 +296,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
-		p.Movement.X = 0
+		p.Velocity.X = 0
 	}
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
@@ -310,7 +307,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Str("axis", "y").Msg("crashed into level boundary")
 		}
-		p.Movement.Y = 0
+		p.Velocity.Y = 0
 	}
 
 	// check hit by shell
@@ -443,8 +440,8 @@ func (g *Game) Update() error {
 
 		// update all player positions
 		for _, p := range g.players {
-			p.Position.X += p.Movement.X
-			p.Position.Y += p.Movement.Y
+			p.Position.X += p.Velocity.X
+			p.Position.Y += p.Velocity.Y
 		}
 
 		for _, p := range g.players {
