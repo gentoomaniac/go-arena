@@ -26,6 +26,10 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 		orientation = -10 - float64(rand.Int()%10)
 	}
 
+	if input.CollidedWithTank {
+		speed = 0
+	}
+
 	if len(input.Enemy) > 0 {
 		enemy := input.Enemy[0]
 		for _, e := range input.Enemy[1:] {
