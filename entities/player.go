@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"math"
+
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,10 +23,10 @@ type Player struct {
 	Name             string
 	State            State
 	Position         vector.Vec2
-	Acceleration     vector.Vec2
-	MaxAcceleration  float64
+	Acceleration     float64
 	Friction         float64
 	Velocity         vector.Vec2
+	ImpactVelocity   vector.Vec2
 	Mass             float64
 	Health           int
 	MaxHealth        int
@@ -56,9 +58,14 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 		p.TargetSpeed = -p.MaxSpeed
 	}
 
-	if p.CurrentSpeed > p.TargetSpeed {
-		p.CurrentSpeed -= p.Acceleration
-	} else if p.CurrentSpeed < p.TargetSpeed {
+	if diff := p.CurrentSpeed - p.TargetSpeed; diff > p.Friction {
+		p.CurrentSpeed += p.Friction
+	} else if diff > p.Acceleration {
 		p.CurrentSpeed += p.Acceleration
+	} else {
+		p.CurrentSpeed = p.TargetSpeed
 	}
+
+	p.Velocity.X = p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180)
+	p.Velocity.Y = p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180)
 }
