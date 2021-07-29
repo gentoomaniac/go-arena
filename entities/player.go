@@ -50,7 +50,7 @@ type Player struct {
 	RespawnCooldown  int
 }
 
-func (p *Player) UpdateSpeed(newSpeed float64) {
+func (p *Player) UpdateVelocity(newSpeed float64) {
 	p.TargetSpeed = newSpeed
 	if p.TargetSpeed > p.MaxSpeed {
 		p.TargetSpeed = p.MaxSpeed
@@ -68,4 +68,15 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 
 	p.Velocity.X = p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180)
 	p.Velocity.Y = p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180)
+}
+
+func (p *Player) UpdateImpactVelocity() {
+	len := p.ImpactVelocity.Length()
+
+	if len > p.Friction {
+		p.ImpactVelocity = p.ImpactVelocity.WithLength(p.ImpactVelocity.Length() - p.Friction)
+	} else {
+		p.ImpactVelocity.X = 0
+		p.ImpactVelocity.Y = 0
+	}
 }

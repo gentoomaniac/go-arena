@@ -26,10 +26,11 @@ var (
 	ShellDamage     = 15
 	ViewRange       = 2500
 	MaxSpeed        = 25.0
-	Acceleration    = 0.1
-	Friction        = -(Acceleration / 2)
+	Acceleration    = 0.05
+	Friction        = -(Acceleration * 2)
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
+	UpdateSpeed     = 10
 )
 
 func NewGame() *Game {
@@ -50,6 +51,7 @@ type Game struct {
 	statsFrame     *ui.Stats
 	tabPressed     bool
 	respawns       int
+	Tick           int
 }
 
 func (g *Game) Init() (err error) {
@@ -136,6 +138,8 @@ func (g *Game) WithBots(bots []string) *Game {
 			Name:            ai.Name(),
 			State:           entities.Alive,
 			Position:        vector.Vec2{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
+			Velocity:        vector.Vec2{0, 0},
+			ImpactVelocity:  vector.Vec2{0, 0},
 			Mass:            float64(80 - index*10),
 			Health:          100,
 			MaxHealth:       100,
@@ -168,6 +172,8 @@ func (g *Game) WithBots(bots []string) *Game {
 }
 
 func (g *Game) updatePlayer(p *entities.Player) {
+	p.UpdateImpactVelocity()
+
 	enemies := make([]*entities.Enemy, 0)
 	for _, e := range g.players {
 		if e != p {
@@ -186,11 +192,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				p.CollidedWithTank = true
 				e.CollidedWithTank = true
 
-				// Distance between center points
-				distance = physics.Distance(p.Position, e.Position)
+				// vector between center points
 				vecPE := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
-				// Normal between balls
+
+				// normal vector between balls
 				normal := vecPE.Unit()
+
 				// Tangent
 				tangent := vector.Vec2{-normal.Y, normal.X}
 
@@ -205,13 +212,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				// Conservation of momentum in 1D
 				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
 				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
-				// // Conservation of momentum in 1D
 
-				// Update ball velocities
-				p.Velocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
-				p.Velocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				e.Velocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				e.Velocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+				// Update impact velocity
+				p.ImpactVelocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
+				p.ImpactVelocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				e.ImpactVelocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				e.ImpactVelocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
 
 				distance = physics.Distance(p.Position, e.Position)
 			}
@@ -242,7 +248,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Enemy:            enemies,
 		})
 
-		p.UpdateSpeed(output.Speed)
+		p.UpdateVelocity(output.Speed)
 
 		p.Orientation = p.Orientation + output.OrientationChange
 		if p.CannonCooldown > 0 {
@@ -265,7 +271,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			}
 		}
 	} else if p.State == entities.Dead {
-		p.UpdateSpeed(0)
+		p.UpdateVelocity(0)
 		if p.NumberRespawns < p.MaxRespawns {
 			if p.RespawnCooldown > 0 {
 				p.RespawnCooldown--
@@ -282,10 +288,13 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	//p.Velocity = p.Velocity.Sum(p.Acceleration)
+	if p.ImpactVelocity.Length() > 0 {
+		log.Debug().Str("vector", p.ImpactVelocity.String()).Str("player", p.Name).Msg("ImpactVelocity")
+	}
+	velocity := p.Velocity.Sum(p.ImpactVelocity)
 
 	// check arena bounds
-	collisionPoint := vector.Vec2{X: p.Position.X + p.Velocity.X, Y: p.Position.Y + p.Velocity.Y}
+	collisionPoint := vector.Vec2{X: p.Position.X + velocity.X, Y: p.Position.Y + velocity.Y}
 	p.Collided = false
 	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}) != nil ||
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
@@ -435,23 +444,30 @@ func (g *Game) isGameOver() {
 }
 
 func (g *Game) Update() error {
-	if !g.gameOver {
-		g.handleInput()
+	if g.Tick%UpdateSpeed == 0 {
+		if !g.gameOver {
+			g.handleInput()
 
-		// update all player positions
-		for _, p := range g.players {
-			p.Position.X += p.Velocity.X
-			p.Position.Y += p.Velocity.Y
+			// update all player positions
+			for _, p := range g.players {
+				p.Position.X += p.Velocity.X
+				p.Position.Y += p.Velocity.Y
+			}
+
+			for _, p := range g.players {
+				g.updatePlayer(p)
+			}
+
+			g.updateShells()
 		}
 
-		for _, p := range g.players {
-			g.updatePlayer(p)
-		}
+		g.isGameOver()
 
-		g.updateShells()
+		g.Tick = 1
+	} else {
+		g.Tick++
 	}
 
-	g.isGameOver()
 	return nil
 }
 
@@ -519,7 +535,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d", g.selectedPlayer.Health, g.selectedPlayer.MaxHealth), 16, 80)
 	} else {
 		for i, p := range g.players {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s (%d/%d)", i+1, p.Name, p.Health, p.MaxHealth), 16, 48+i*16)
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s H(%d/%d) S(%.0f/%.0f)", i+1, p.Name, p.Health, p.MaxHealth, math.Round(p.Velocity.Length()), p.MaxSpeed), 16, 48+i*16)
 		}
 	}
 }
