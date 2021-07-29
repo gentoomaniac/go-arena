@@ -36,7 +36,10 @@ func (v Vec2) DotProduct(v2 Vec2) float64 {
 	return v.X*v2.X + v.Y*v2.Y
 }
 
-func (v Vec2) ChangeLength(l float64) Vec2 {
+func (v Vec2) WithLength(l float64) Vec2 {
+	if v.Length() == 0 {
+		return Vec2{}
+	}
 	return v.ScalarProduct(l / v.Length())
 }
 
