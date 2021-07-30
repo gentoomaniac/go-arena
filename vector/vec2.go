@@ -54,3 +54,11 @@ func (v Vec2) Rotate(b float64) Vec2 {
 		Y: v.X*math.Sin(rad) + v.Y*math.Cos(rad),
 	}
 }
+
+func (v Vec2) Perpendicular() Vec2 {
+	return Vec2{-v.Y, v.X}
+}
+
+func (v Vec2) ToPoint(p Vec2) Vec2 {
+	return Vec2{v.X - p.X, v.Y - p.Y}
+}
