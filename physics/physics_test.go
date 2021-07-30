@@ -143,3 +143,29 @@ func TestDoCirclesOverlap(t *testing.T) {
 		})
 	}
 }
+
+func TestPointLineDistance(t *testing.T) {
+	maxError := 0.01
+	var tests = []struct {
+		name      string
+		v1, v2, p vector.Vec2
+		want      float64
+	}{
+		{
+			"1/1",
+			vector.Vec2{0, 0}, vector.Vec2{1, 1},
+			vector.Vec2{1, 0},
+			vector.Vec2{1, 1}.Length() / 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := PointLineDistance(tt.v1, tt.v2, tt.p)
+			if result > tt.want*(1+maxError) || result < tt.want*(1-maxError) {
+				t.Errorf("result exceeds error threshold, got '%f' want '%f'", result, tt.want)
+			}
+		})
+	}
+
+}
