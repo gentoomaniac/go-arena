@@ -301,8 +301,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	// check arena bounds
 	collisionPoint := vector.Vec2{X: p.Position.X + velocity.X, Y: p.Position.Y + velocity.Y}
 	p.Collided = false
-	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}) != nil ||
-		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
+	if collisionPoint.X < 0.0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) ||
+		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, collisionPoint) < p.CollisionRadius ||
+		physics.PointLineDistance(vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) < p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
@@ -314,8 +315,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Velocity.X = 0
 		p.ImpactVelocity.X = 0
 	}
-	if physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}) != nil ||
-		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
+	if collisionPoint.Y < 0.0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) ||
+		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, collisionPoint) < p.CollisionRadius ||
+		physics.PointLineDistance(vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) < p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		if p.Health <= 0 && p.State == entities.Alive {
