@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"math"
+
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,20 +20,21 @@ func (s State) String() string {
 }
 
 type Player struct {
-	ID               int
-	Name             string
-	State            State
-	Position         vector.Vec2
-	Acceleration     float64
-	Friction         float64
-	Velocity         vector.Vec2
-	ImpactVelocity   vector.Vec2
-	Mass             float64
-	Health           int
-	MaxHealth        int
-	Energy           int
-	MaxEnergy        int
-	CurrentSpeed     float64
+	ID             int
+	Name           string
+	State          State
+	Position       vector.Vec2
+	Acceleration   float64
+	Friction       float64
+	Velocity       vector.Vec2
+	CurrentSpeed   float64
+	ImpactVelocity vector.Vec2
+	Mass           float64
+	Health         int
+	MaxHealth      int
+	Energy         int
+	MaxEnergy      int
+	//CurrentSpeed     float64
 	TargetSpeed      float64
 	MaxSpeed         float64
 	Orientation      float64
@@ -49,7 +52,7 @@ type Player struct {
 	RespawnCooldown  int
 }
 
-func (p *Player) UpdateVelocity(newSpeed float64) {
+func (p *Player) UpdateSpeed(newSpeed float64) {
 	p.TargetSpeed = newSpeed
 	if p.TargetSpeed > p.MaxSpeed {
 		p.TargetSpeed = p.MaxSpeed
@@ -57,23 +60,18 @@ func (p *Player) UpdateVelocity(newSpeed float64) {
 		p.TargetSpeed = -p.MaxSpeed
 	}
 
-	// ToDo: When the tanks start the velocity is 0 so all calculations will be 0 and tanks not move
-
-	if diff := p.Velocity.Length() - p.TargetSpeed; diff > p.TargetSpeed {
-		if diff > p.Friction {
-			p.Velocity = p.Velocity.WithLength(p.Velocity.Length() - p.Friction)
-		} else {
-			p.Velocity = p.Velocity.WithLength(p.TargetSpeed)
-		}
-	} else {
-		if diff > p.Acceleration {
-			p.Velocity = p.Velocity.WithLength(p.Velocity.Length() + p.Acceleration)
-		} else {
-			p.Velocity = p.Velocity.WithLength(p.TargetSpeed)
-		}
+	if p.CurrentSpeed > p.TargetSpeed {
+		p.CurrentSpeed -= p.Acceleration
+	} else if p.CurrentSpeed < p.TargetSpeed {
+		p.CurrentSpeed += p.Acceleration
 	}
+}
 
-	//ToDo: need orientation change
+func (p *Player) UpdateVelocity() {
+	p.Velocity = vector.Vec2{
+		X: p.CurrentSpeed * math.Cos(p.Orientation*math.Pi/180),
+		Y: p.CurrentSpeed * math.Sin(p.Orientation*math.Pi/180),
+	}
 }
 
 func (p *Player) UpdateImpactVelocity() {

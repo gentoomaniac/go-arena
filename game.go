@@ -30,7 +30,7 @@ var (
 	Friction        = Acceleration * 2
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
-	UpdateSpeed     = 5
+	UpdateSpeed     = 10
 )
 
 func NewGame() *Game {
@@ -174,7 +174,6 @@ func (g *Game) WithBots(bots []string) *Game {
 
 func (g *Game) updatePlayer(p *entities.Player) {
 	p.UpdateImpactVelocity()
-	velocity := p.Velocity.Sum(p.ImpactVelocity)
 
 	enemies := make([]*entities.Enemy, 0)
 	for _, e := range g.players {
@@ -198,7 +197,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Position:         p.Position,
 			TargetSpeed:      p.TargetSpeed,
 			MaxSpeed:         p.MaxSpeed,
-			CurrentSpeed:     p.CurrentSpeed,
+			CurrentSpeed:     p.CurrentSpeed + p.ImpactVelocity.Length(),
 			Orientation:      p.Orientation,
 			Collided:         p.Collided,
 			CollidedWithTank: p.CollidedWithTank,
@@ -207,8 +206,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Enemy:            enemies,
 		})
 
-		p.Orientation = p.Orientation + output.OrientationChange
-		p.UpdateVelocity(output.Speed)
+		p.Orientation += output.OrientationChange
+		p.UpdateSpeed(output.Speed)
 
 		if p.CannonCooldown > 0 {
 			p.CannonCooldown--
@@ -219,7 +218,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				newShell.Source = p
 				newShell.Movement = vector.Vec2{1, 0}.Rotate(p.Orientation).WithLength(ShellSpeed)
 				newShell.Orientation = p.Orientation
-				newShell.Position = p.Position //.Sum(p.Velocity.WithLength(p.Velocity.Length() + p.CollisionRadius))
+				newShell.Position = p.Position //.Sum(vector.Vec2{p.CollisionRadius, 0}.Rotate(p.Orientation))
 				newShell.Damage = ShellDamage
 				newShell.CollisionRadius = float64(newShell.Sprite().Bounds().Dx()) / 2
 
@@ -227,12 +226,15 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			}
 		}
 	} else if p.State == entities.Dead {
-		p.UpdateVelocity(0)
+		p.UpdateSpeed(0)
 		if p.NumberRespawns < p.MaxRespawns {
 			if p.RespawnCooldown > 0 {
 				p.RespawnCooldown--
 			} else {
 				p.CurrentSpeed = 0
+				p.TargetSpeed = 0
+				p.Velocity = vector.Vec2{0, 0}
+				p.ImpactVelocity = vector.Vec2{0, 0}
 				spawnPoints := g.arenaMap.GetObjectGroupByName("spawn_points").Objects
 				spawnPoint := spawnPoints[rand.Int()%len(spawnPoints)]
 				p.Position.X = float64(spawnPoint.X)
@@ -244,6 +246,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
+	p.UpdateVelocity()
+	velocity := p.Velocity.Sum(p.ImpactVelocity)
 	// Collisions
 	for index, e := range g.players {
 		if e != p {
@@ -301,12 +305,12 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
 		p.Collided = true
 		p.Health -= ColisionDamage
-		log.Debug().Str("name", p.Name).Msg("collided with X level boundary")
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
+		// ToDo: p.Position - radius - level.X  =  displacement to left border
 		p.Velocity.X = 0
 		p.ImpactVelocity.X = 0
 	}
@@ -314,7 +318,6 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		physics.Intersection(p.Position, collisionPoint, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}) != nil {
 		p.Collided = true
 		p.Health -= ColisionDamage
-		log.Debug().Str("name", p.Name).Msg("collided with Y level boundary")
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
@@ -549,8 +552,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Selected Player: %s", g.selectedPlayer.Name), 16, 64)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d", g.selectedPlayer.Health, g.selectedPlayer.MaxHealth), 16, 80)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Position: %s", g.selectedPlayer.Position), 16, 96)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Velocity: %s", g.selectedPlayer.Velocity), 16, 112)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("ImpactVelocity: %s", g.selectedPlayer.ImpactVelocity), 16, 128)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Speed: %f", g.selectedPlayer.Velocity.Length()), 16, 112)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Velocity: %s", g.selectedPlayer.Velocity), 16, 128)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("ImpactVelocity: %s", g.selectedPlayer.ImpactVelocity), 16, 144)
 	} else {
 		for i, p := range g.players {
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s H(%d/%d) S(%.0f/%.0f)", i+1, p.Name, p.Health, p.MaxHealth, math.Round(p.Velocity.Length()), p.MaxSpeed), 16, 48+i*16)
