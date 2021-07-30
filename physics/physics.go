@@ -38,7 +38,7 @@ func Intersection(v1, v2, v3, v4 vector.Vec2) *vector.Vec2 {
 	return nil
 }
 
-func Distance(a vector.Vec2, b vector.Vec2) float64 {
+func Distance(a, b vector.Vec2) float64 {
 	return math.Sqrt(math.Pow(a.X-b.X, 2) + math.Pow(a.Y-b.Y, 2))
 }
 

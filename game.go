@@ -259,7 +259,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 
 				// check for static collision
 				displaceBy := math.Abs(circleDistance) / 2
-				displacementVector := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+				displacementVector := p.Position.ToPoint(e.Position)
 
 				// ToDo: This can move a tank out of the level boundaries
 				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
@@ -268,13 +268,13 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				g.players[index].CollidedWithTank = true
 
 				// vector between center points
-				vecPE := vector.Vec2{p.Position.X - e.Position.X, p.Position.Y - e.Position.Y}
+				vecPE := p.Position.ToPoint(e.Position)
 
 				// normal vector between balls
 				normal := vecPE.Unit()
 
-				// Tangent
-				tangent := vector.Vec2{-normal.Y, normal.X}
+				// perpendicular vector
+				tangent := normal.Perpendicular()
 
 				// Dot Product Tangent
 				dpTanP := velocity.DotProduct(tangent)
