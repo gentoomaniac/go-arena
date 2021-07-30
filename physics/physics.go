@@ -50,3 +50,11 @@ func DoMovingCirclesCollide(aCircle vector.Circle, aVelocity vector.Vec2, bCircl
 
 	return 0
 }
+
+func PointLineDistance(v1, v2, p vector.Vec2) float64 {
+	slope := v2.Y - v1.Y/v2.X - v1.X
+	b := v1.Y - slope*v1.X
+	n := v1.Perpendicular().Unit()
+
+	return math.Abs(n.X*p.X+n.Y*p.Y+b) / math.Sqrt(n.X*n.X+n.Y*n.Y)
+}
