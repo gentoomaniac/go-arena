@@ -65,3 +65,58 @@ func TestUnit(t *testing.T) {
 	}
 
 }
+
+func TestRotate(t *testing.T) {
+	maxError := 0.01
+	var tests = []struct {
+		name  string
+		v     Vec2
+		angle float64
+		want  Vec2
+	}{
+		{
+			"0", Vec2{1, 1}, 0, Vec2{1, 1},
+		},
+		{
+			"90", Vec2{1, 1}, 90, Vec2{-1, 1},
+		},
+		{
+			"180", Vec2{1, 1}, 180, Vec2{-1, -1},
+		},
+		{
+			"360", Vec2{1, 1}, 360, Vec2{1, 1},
+		},
+		{
+			"123", Vec2{45, 16}, 123, Vec2{-37.9274856628, 29.0259509973},
+		},
+	}
+
+	error := func(g Vec2, w Vec2) {
+		t.Errorf("result exceeds error threshold, got '%f' want '%f'", g, w)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.v.Rotate(tt.angle)
+			if tt.want.X >= 0 {
+				if result.X > tt.want.X*(1+maxError) || result.X < tt.want.X*(1-maxError) {
+					error(result, tt.want)
+				}
+			} else {
+				if result.X < tt.want.X*(1+maxError) || result.X > tt.want.X*(1-maxError) {
+					error(result, tt.want)
+				}
+			}
+
+			if tt.want.Y >= 0 {
+				if result.Y > tt.want.Y*(1+maxError) || result.Y < tt.want.Y*(1-maxError) {
+					error(result, tt.want)
+				}
+			} else {
+				if result.Y < tt.want.Y*(1+maxError) || result.Y > tt.want.Y*(1-maxError) {
+					error(result, tt.want)
+				}
+			}
+		})
+	}
+}
