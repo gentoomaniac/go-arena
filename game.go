@@ -217,10 +217,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				p.CannonCooldown = CannonCooldown
 				newShell := entities.NewShell()
 				newShell.Source = p
-				newShell.Movement = vector.Vec2{
-					X: ShellSpeed * math.Cos(p.Orientation*math.Pi/180),
-					Y: ShellSpeed * math.Sin(p.Orientation*math.Pi/180),
-				}
+				newShell.Movement = vector.Vec2{1, 0}.Rotate(p.Orientation).WithLength(ShellSpeed)
 				newShell.Orientation = p.Orientation
 				newShell.Position = p.Position //.Sum(p.Velocity.WithLength(p.Velocity.Length() + p.CollisionRadius))
 				newShell.Damage = ShellDamage
