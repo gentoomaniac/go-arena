@@ -265,39 +265,39 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				vDisplace := vPlayerEnemy.Unit().ScalarProduct(displaceBy)
 				p.Position.X += vDisplace.X
 				p.Position.Y += vDisplace.Y
-				g.players[index].Position.X += vDisplace.X
-				g.players[index].Position.Y += vDisplace.Y
+				g.players[index].Position.X -= vDisplace.X
+				g.players[index].Position.Y -= vDisplace.Y
 
 				p.CollidedWithTank = true
 				g.players[index].CollidedWithTank = true
 
-				// // vector between center points
-				// vecPE := p.Position.ToPoint(e.Position)
+				// vector between center points
+				vecPE := p.Position.ToPoint(e.Position)
 
-				// // normal vector between balls
-				// normal := vecPE.Unit()
+				// normal vector between balls
+				normal := vecPE.Unit()
 
-				// // perpendicular vector
-				// tangent := normal.Perpendicular()
+				// perpendicular vector
+				tangent := normal.Perpendicular()
 
-				// // Dot Product Tangent
-				// eVelocity := e.Velocity.Sum(e.ImpactVelocity)
-				// dpTanP := velocity.DotProduct(tangent)
-				// dpTanE := eVelocity.DotProduct(tangent)
+				// Dot Product Tangent
+				eVelocity := e.Velocity.Sum(e.ImpactVelocity)
+				dpTanP := velocity.DotProduct(tangent)
+				dpTanE := eVelocity.DotProduct(tangent)
 
-				// // Dot Product Normal
-				// dpNormP := velocity.DotProduct(normal)
-				// dpNormE := eVelocity.DotProduct(normal)
+				// Dot Product Normal
+				dpNormP := velocity.DotProduct(normal)
+				dpNormE := eVelocity.DotProduct(normal)
 
-				// // Conservation of momentum in 1D
-				// mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
-				// mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
+				// Conservation of momentum in D
+				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
+				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
 
-				// // Update impact velocity
-				// p.ImpactVelocity.X += (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
-				// p.ImpactVelocity.Y += (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				// g.players[index].ImpactVelocity.X += (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				// g.players[index].ImpactVelocity.Y += (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+				// Update impact velocity
+				p.ImpactVelocity.X += (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
+				p.ImpactVelocity.Y += (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				g.players[index].ImpactVelocity.X += (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				g.players[index].ImpactVelocity.Y += (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
 
 				if p.ID == 0 {
 					log.Debug().Str("displace", vDisplace.String()).Msg("")
