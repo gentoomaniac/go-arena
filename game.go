@@ -263,8 +263,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				// ToDo: Multiple collisions happen right after one another which causes hughe spikes in ImpactVelocity
 				// ToDo: This can move a tank out of the level boundaries
 				vDisplace := vPlayerEnemy.Unit().ScalarProduct(displaceBy)
-				p.Position.X = vDisplace.X
-				p.Position.Y = vDisplace.Y
+				p.Position.X += vDisplace.X
+				p.Position.Y += vDisplace.Y
 				g.players[index].Position.X += vDisplace.X
 				g.players[index].Position.Y += vDisplace.Y
 
