@@ -30,7 +30,7 @@ var (
 	Friction        = Acceleration * 2
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
-	UpdateSpeed     = 10
+	UpdateSpeed     = 5
 )
 
 func NewGame() *Game {
@@ -141,7 +141,7 @@ func (g *Game) WithBots(bots []string) *Game {
 			Position:        vector.Vec2{X: float64(spawnPoint.X), Y: float64(spawnPoint.Y)},
 			Velocity:        vector.Vec2{0, 0},
 			ImpactVelocity:  vector.Vec2{0, 0},
-			Mass:            float64(80 - index*10),
+			Mass:            10,
 			Health:          100,
 			MaxHealth:       100,
 			Energy:          100,
@@ -253,47 +253,56 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		if e != p {
 			circleDistance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
 
+			// ToDo: nneds refactor to break this code into physics module and write tests for it
 			// collisions: https://www.youtube.com/watch?v=LPzyNOHY3A4&ab_channel=javidx9
 			if circleDistance < 0 {
-				eVelocity := e.Velocity.Sum(e.ImpactVelocity)
-
 				// check for static collision
 				displaceBy := math.Abs(circleDistance) / 2
-				displacementVector := p.Position.ToPoint(e.Position)
+				vPlayerEnemy := p.Position.ToPoint(e.Position)
 
+				// ToDo: Multiple collisions happen right after one another which causes hughe spikes in ImpactVelocity
 				// ToDo: This can move a tank out of the level boundaries
-				p.Position = p.Position.Sum(displacementVector.Unit().ScalarProduct(-displaceBy))
-				g.players[index].Position = e.Position.Sum(displacementVector.Unit().ScalarProduct(displaceBy))
+				vDisplace := vPlayerEnemy.Unit().ScalarProduct(displaceBy)
+				p.Position.X = vDisplace.X
+				p.Position.Y = vDisplace.Y
+				g.players[index].Position.X += vDisplace.X
+				g.players[index].Position.Y += vDisplace.Y
+
 				p.CollidedWithTank = true
 				g.players[index].CollidedWithTank = true
 
-				// vector between center points
-				vecPE := p.Position.ToPoint(e.Position)
+				// // vector between center points
+				// vecPE := p.Position.ToPoint(e.Position)
 
-				// normal vector between balls
-				normal := vecPE.Unit()
+				// // normal vector between balls
+				// normal := vecPE.Unit()
 
-				// perpendicular vector
-				tangent := normal.Perpendicular()
+				// // perpendicular vector
+				// tangent := normal.Perpendicular()
 
-				// Dot Product Tangent
-				dpTanP := velocity.DotProduct(tangent)
-				dpTanE := eVelocity.DotProduct(tangent)
+				// // Dot Product Tangent
+				// eVelocity := e.Velocity.Sum(e.ImpactVelocity)
+				// dpTanP := velocity.DotProduct(tangent)
+				// dpTanE := eVelocity.DotProduct(tangent)
 
-				// Dot Product Normal
-				dpNormP := velocity.DotProduct(normal)
-				dpNormE := eVelocity.DotProduct(normal)
+				// // Dot Product Normal
+				// dpNormP := velocity.DotProduct(normal)
+				// dpNormE := eVelocity.DotProduct(normal)
 
-				// Conservation of momentum in 1D
-				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
-				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
+				// // Conservation of momentum in 1D
+				// mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
+				// mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
 
-				// Update impact velocity
-				p.ImpactVelocity.X = (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor
-				p.ImpactVelocity.Y = (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				g.players[index].ImpactVelocity.X = (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				g.players[index].ImpactVelocity.Y = (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+				// // Update impact velocity
+				// p.ImpactVelocity.X += (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
+				// p.ImpactVelocity.Y += (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				// g.players[index].ImpactVelocity.X += (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				// g.players[index].ImpactVelocity.Y += (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
 
+				if p.ID == 0 {
+					log.Debug().Str("displace", vDisplace.String()).Msg("")
+					//log.Debug().Float64("X", (tangent.X*dpTanP+normal.X*mP)*g.scalingFactor).Float64("Y", (tangent.Y*dpTanP+normal.Y*mP)*g.scalingFactor).Msg("collided")
+				}
 			}
 		}
 	}
@@ -342,6 +351,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				g.shells = remove(g.shells, i)
 				p.Hit = true
 				p.Health -= shell.Damage
+				p.ImpactVelocity.Sum(shell.Movement.WithLength(10))
 				if p.Health <= 0 && p.State == entities.Alive {
 					p.RespawnCooldown = RespawnWaitTime
 					p.State = entities.Dead
