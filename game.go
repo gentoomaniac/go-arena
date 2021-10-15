@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	ColisionDamage  = 1 // how much health does a player loose on colisions
+	ColisionDamage  = 0 // how much health does a player loose on colisions
 	CannonCooldown  = 60
 	ShellDamage     = 15
 	ViewRange       = 2500
@@ -30,7 +30,9 @@ var (
 	Friction        = Acceleration * 2
 	RespawnWaitTime = 180 // number ticks
 	ShellSpeed      = 30.0
-	UpdateSpeed     = 5
+	UpdateSpeed     = 1
+	StepMode        = false // update frame on key press only
+	NextTick        = false
 )
 
 func NewGame() *Game {
@@ -44,8 +46,8 @@ type Game struct {
 	players        []*entities.Player
 	shells         []*entities.Shell
 	selectedPlayer *entities.Player
-	Pressed        []ebiten.Key
-	PressedBefore  []ebiten.Key
+	Pressed        map[ebiten.Key]bool
+	PressedBefore  map[ebiten.Key]bool
 	frameImage     *ebiten.Image
 	gameOver       bool
 	statsFrame     *ui.Stats
@@ -56,6 +58,7 @@ type Game struct {
 
 func (g *Game) Init() (err error) {
 	log.Debug().Msg("init()")
+
 	g.screenBuffer = ebiten.NewImage(g.arenaMap.PixelWidth, g.arenaMap.PixelHeight)
 	g.frameImage, err = gfx.LoadFrameSprite()
 	if err != nil {
@@ -251,9 +254,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	// Collisions
 	for index, e := range g.players {
 		if e != p {
-			circleDistance := physics.DistanceBetweenCircles(vector.Circle{p.Position, p.CollisionRadius}, vector.Circle{e.Position, e.CollisionRadius})
+			circleDistance := physics.DistanceBetweenCircles(vector.Circle{e.Position, e.CollisionRadius}, vector.Circle{p.Position, p.CollisionRadius})
 
-			// ToDo: nneds refactor to break this code into physics module and write tests for it
+			// ToDo: needs refactor to break this code into physics module and write tests for it
 			// collisions: https://www.youtube.com/watch?v=LPzyNOHY3A4&ab_channel=javidx9
 			if circleDistance < 0 {
 				// check for static collision
@@ -397,11 +400,12 @@ func remove(s []*entities.Shell, i int) []*entities.Shell {
 }
 
 func (g *Game) handleInput() {
-	g.Pressed = nil
+	g.Pressed = map[ebiten.Key]bool{}
 	g.tabPressed = false
+	NextTick = false
 	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
 		if ebiten.IsKeyPressed(k) {
-			g.Pressed = append(g.Pressed, k)
+			g.Pressed[k] = true
 			switch k {
 			case ebiten.Key1:
 				g.selectedPlayer = g.players[0]
@@ -422,6 +426,15 @@ func (g *Game) handleInput() {
 			case ebiten.KeyArrowRight:
 				if UpdateSpeed < 10 {
 					UpdateSpeed += 1
+				}
+			case ebiten.KeyS:
+				if _, exists := g.PressedBefore[k]; !exists {
+					StepMode = !StepMode
+					log.Debug().Msg("Toggled single step mode")
+				}
+			case ebiten.KeyN:
+				if _, exists := g.PressedBefore[k]; !exists {
+					NextTick = true
 				}
 			}
 		}
@@ -472,10 +485,14 @@ func (g *Game) isGameOver() {
 }
 
 func (g *Game) Update() error {
+	g.handleInput()
+
+	if StepMode && !NextTick {
+		return nil
+	}
+
 	if g.Tick%UpdateSpeed == 0 || UpdateSpeed <= 0 {
 		if !g.gameOver {
-			g.handleInput()
-
 			// update all player positions
 			for _, p := range g.players {
 				p.Position.X += p.Velocity.X + p.ImpactVelocity.X
