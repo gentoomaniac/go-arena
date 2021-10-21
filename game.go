@@ -299,13 +299,9 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				// Update impact velocity
 				p.ImpactVelocity.X += (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
 				p.ImpactVelocity.Y += (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				g.players[index].ImpactVelocity.X += (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				g.players[index].ImpactVelocity.Y += (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+				g.players[index].ImpactVelocity.X -= (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				g.players[index].ImpactVelocity.Y -= (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
 
-				if p.ID == 0 {
-					log.Debug().Str("displace", vDisplace.String()).Msg("")
-					//log.Debug().Float64("X", (tangent.X*dpTanP+normal.X*mP)*g.scalingFactor).Float64("Y", (tangent.Y*dpTanP+normal.Y*mP)*g.scalingFactor).Msg("collided")
-				}
 			}
 		}
 	}
@@ -497,6 +493,11 @@ func (g *Game) Update() error {
 			for _, p := range g.players {
 				p.Position.X += p.Velocity.X + p.ImpactVelocity.X
 				p.Position.Y += p.Velocity.Y + p.ImpactVelocity.Y
+
+				if p.ID == 0 {
+					log.Debug().Str("impactVelocity", p.ImpactVelocity.String()).Msg("")
+					//log.Debug().Float64("X", (tangent.X*dpTanP+normal.X*mP)*g.scalingFactor).Float64("Y", (tangent.Y*dpTanP+normal.Y*mP)*g.scalingFactor).Msg("collided")
+				}
 			}
 
 			for _, p := range g.players {
