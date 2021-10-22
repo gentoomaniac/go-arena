@@ -296,11 +296,11 @@ func (g *Game) updatePlayer(p *entities.Player) {
 				mP := (dpNormP*(p.Mass-e.Mass) + 2.0*e.Mass*dpNormE) / (p.Mass + e.Mass)
 				mE := (dpNormE*(e.Mass-p.Mass) + 2.0*p.Mass*dpNormP) / (p.Mass + e.Mass)
 
-				// Update impact velocity
-				p.ImpactVelocity.X += (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
-				p.ImpactVelocity.Y += (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
-				g.players[index].ImpactVelocity.X -= (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
-				g.players[index].ImpactVelocity.Y -= (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
+				// Update impact velocity // Switched +/-
+				p.ImpactVelocity.X -= (tangent.X*dpTanP + normal.X*mP) * g.scalingFactor // ToDo: Tweak this magic number a bit more
+				p.ImpactVelocity.Y -= (tangent.Y*dpTanP + normal.Y*mP) * g.scalingFactor
+				g.players[index].ImpactVelocity.X += (tangent.X*dpTanE + normal.X*mE) * g.scalingFactor
+				g.players[index].ImpactVelocity.Y += (tangent.Y*dpTanE + normal.Y*mE) * g.scalingFactor
 
 			}
 		}
