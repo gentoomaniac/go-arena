@@ -62,3 +62,7 @@ func (v Vec2) Perpendicular() Vec2 {
 func (v Vec2) ToPoint(p Vec2) Vec2 {
 	return Vec2{v.X - p.X, v.Y - p.Y}
 }
+
+func (v Vec2) Angle() float64 {
+	return (math.Atan2(v.Y, v.X) / math.Pi) * 180.0
+}

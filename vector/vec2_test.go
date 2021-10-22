@@ -63,7 +63,6 @@ func TestUnit(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestRotate(t *testing.T) {
@@ -116,6 +115,34 @@ func TestRotate(t *testing.T) {
 				if result.Y < tt.want.Y*(1+maxError) || result.Y > tt.want.Y*(1-maxError) {
 					error(result, tt.want)
 				}
+			}
+		})
+	}
+}
+
+func TestAngle(t *testing.T) {
+	maxError := 0.01
+	var tests = []struct {
+		name string
+		v    Vec2
+		want float64
+	}{
+		{
+			"zero vector", Vec2{0, 0}, 0.0,
+		},
+		{
+			"45", Vec2{1, 1}, 45.0,
+		},
+		{
+			"arbitrary", Vec2{5, 1}, 11.309932474020195,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.v.Angle()
+			if result > tt.want*(1+maxError) {
+				t.Errorf("result exceeds error threshold, got '%f' want '%f'", result, tt.want)
 			}
 		})
 	}
