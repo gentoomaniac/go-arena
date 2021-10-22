@@ -26,6 +26,7 @@ var (
 	ShellDamage     = 15
 	ViewRange       = 2500
 	MaxSpeed        = 25.0
+	MaxTurnPerTick  = 2.0
 	Acceleration    = 0.05
 	Friction        = Acceleration * 2
 	RespawnWaitTime = 180 // number ticks
@@ -209,7 +210,11 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Enemy:            enemies,
 		})
 
-		p.Orientation += output.OrientationChange
+		if math.Abs(output.OrientationChange) <= MaxTurnPerTick {
+			p.Orientation += output.OrientationChange
+		} else {
+			p.Orientation += MaxTurnPerTick * (output.OrientationChange / math.Abs(output.OrientationChange))
+		}
 		p.UpdateSpeed(output.Speed)
 
 		if p.CannonCooldown > 0 {
