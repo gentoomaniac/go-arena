@@ -161,6 +161,9 @@ func TestFromAngle(t *testing.T) {
 		{
 			"1/1 vector", 45, 1.4142, Vec2{1, 1},
 		},
+		{
+			"zero degree", 0, 1, Vec2{1, 0},
+		},
 	}
 
 	for _, tt := range tests {
