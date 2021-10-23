@@ -19,9 +19,13 @@ func (v Vec2) Length() float64 {
 }
 
 func (v Vec2) Unit() Vec2 {
-	magnitude := math.Sqrt(math.Pow(v.X, 2) + math.Pow(v.Y, 2))
+	if v.X == 0 && v.Y == 0 {
+		return Vec2{0, 0}
+	} else {
+		magnitude := math.Sqrt(math.Pow(v.X, 2) + math.Pow(v.Y, 2))
 
-	return Vec2{v.X / magnitude, v.Y / magnitude}
+		return Vec2{v.X / magnitude, v.Y / magnitude}
+	}
 }
 
 func (v Vec2) ScalarProduct(m float64) Vec2 {
@@ -65,4 +69,11 @@ func (v Vec2) ToPoint(p Vec2) Vec2 {
 
 func (v Vec2) Angle() float64 {
 	return (math.Atan2(v.Y, v.X) / math.Pi) * 180.0
+}
+
+func FromAngle(angle float64, length float64) Vec2 {
+	return Vec2{
+		X: length * math.Cos(angle*(math.Pi/180)),
+		Y: length * math.Sin(angle*(math.Pi/180)),
+	}
 }

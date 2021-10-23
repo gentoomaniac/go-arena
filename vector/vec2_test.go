@@ -147,3 +147,29 @@ func TestAngle(t *testing.T) {
 		})
 	}
 }
+func TestFromAngle(t *testing.T) {
+	maxError := 0.01
+	var tests = []struct {
+		name   string
+		angle  float64
+		length float64
+		want   Vec2
+	}{
+		{
+			"zero vector", 45, 0, Vec2{},
+		},
+		{
+			"1/1 vector", 45, 1.4142, Vec2{1, 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FromAngle(tt.angle, tt.length)
+			if result.X > tt.want.X*(1+maxError) || result.X < tt.want.X*(1-maxError) ||
+				result.Y > tt.want.Y*(1+maxError) || result.Y < tt.want.Y*(1-maxError) {
+				t.Errorf("result exceeds error threshold, got '%f' want '%f'", result, tt.want)
+			}
+		})
+	}
+}
