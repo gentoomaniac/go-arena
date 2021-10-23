@@ -206,23 +206,14 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			Enemy:            enemies,
 		})
 
-		log.Debug().Float64("oriantationchange", output.OrientationChange).Msg("")
+		p.UpdateSpeed(output.Speed)
+
 		if output.OrientationChange > 0 {
 			if math.Abs(output.OrientationChange) <= MaxTurnPerTick {
 				p.UpdateOrientation(output.OrientationChange)
 			} else {
 				p.UpdateOrientation(MaxTurnPerTick * (output.OrientationChange / math.Abs(output.OrientationChange)))
 			}
-		}
-
-		p.UpdateSpeed(output.Speed)
-		if p.ID == 0 {
-			log.Debug().
-				Float64("speed", p.Velocity.Length()).
-				Float64("targetspeed", p.TargetSpeed).
-				Str("velocity", p.Velocity.String()).
-				Float64("orientation", p.Orientation).
-				Msg("")
 		}
 
 		if p.CannonCooldown > 0 {
@@ -249,7 +240,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 			} else {
 				p.TargetSpeed = 0
 				p.Velocity = vector.Vec2{}
-				p.Orientation = float64(rand.Intn(360))
+				p.Orientation = vector.Vec2{X: rand.Float64(), Y: rand.Float64()}
 				spawnPoints := g.arenaMap.GetObjectGroupByName("spawn_points").Objects
 				spawnPoint := spawnPoints[rand.Int()%len(spawnPoints)]
 				p.Position.X = float64(spawnPoint.X)
@@ -319,7 +310,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	collisionPoint := vector.Vec2{X: p.Position.X + p.Velocity.X, Y: p.Position.Y + p.Velocity.Y}
 	p.Collided = false
 	if collisionPoint.X < 0.0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) ||
-		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, collisionPoint) < p.CollisionRadius ||
+		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius ||
 		physics.PointLineDistance(vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
@@ -332,7 +323,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Velocity.X = 0
 	}
 	if collisionPoint.Y < 0.0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) ||
-		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, collisionPoint) < p.CollisionRadius ||
+		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, collisionPoint) <= p.CollisionRadius ||
 		physics.PointLineDistance(vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
@@ -531,7 +522,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// ======== Draw Player =========
 	for _, p := range g.players {
 		playerOp := ebiten.DrawImageOptions{}
-		playerOp = gfx.Rotate(p.Sprite, playerOp, int(p.Orientation))
+		playerOp = gfx.Rotate(p.Sprite, playerOp, int(p.Orientation.Angle()))
 		playerOp.ColorM.Scale(p.Color.R, p.Color.G, p.Color.B, p.Color.Alpha)
 		playerOp.GeoM.Translate(p.Position.X-float64(p.Sprite.Bounds().Dx()/2), p.Position.Y-float64(p.Sprite.Bounds().Dy()/2))
 

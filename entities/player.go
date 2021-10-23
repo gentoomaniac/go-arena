@@ -25,7 +25,7 @@ type Player struct {
 	Acceleration float64
 	Friction     float64
 	Velocity     vector.Vec2
-	Orientation  float64
+	Orientation  vector.Vec2
 	Mass         float64
 	Health       int
 	MaxHealth    int
@@ -58,9 +58,9 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 
 	if p.Velocity.Length() == 0 {
 		if newSpeed > p.Acceleration {
-			p.Velocity = vector.FromAngle(p.Orientation, p.Acceleration)
+			p.Velocity = vector.FromAngle(p.Orientation.Angle(), p.Acceleration)
 		} else {
-			p.Velocity = vector.FromAngle(p.Orientation, newSpeed)
+			p.Velocity = vector.FromAngle(p.Orientation.Angle(), newSpeed)
 		}
 	} else if p.Velocity.Length() > p.TargetSpeed {
 		p.Velocity = p.Velocity.Unit().WithLength(p.Velocity.Length() - p.Acceleration)
@@ -70,6 +70,6 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 }
 
 func (p *Player) UpdateOrientation(angle float64) {
-	p.Orientation += angle
-	p.Velocity = p.Velocity.Rotate(p.Orientation)
+	p.Orientation = p.Velocity.Rotate(angle)
+	p.Velocity = p.Velocity.Rotate(angle)
 }

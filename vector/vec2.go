@@ -11,7 +11,7 @@ type Vec2 struct {
 }
 
 func (v Vec2) String() string {
-	return fmt.Sprintf("(%f, %f)", v.X, v.Y)
+	return fmt.Sprintf("(X:%f, Y:%f)", v.X, v.Y)
 }
 
 func (v Vec2) Length() float64 {
@@ -51,8 +51,8 @@ func (v Vec2) Negative() Vec2 {
 	return v.ScalarProduct(-1)
 }
 
-func (v Vec2) Rotate(b float64) Vec2 {
-	rad := b * (math.Pi / 180)
+func (v Vec2) Rotate(deg float64) Vec2 {
+	rad := deg * (math.Pi / 180)
 	return Vec2{
 		X: v.X*math.Cos(rad) - v.Y*math.Sin(rad),
 		Y: v.X*math.Sin(rad) + v.Y*math.Cos(rad),
