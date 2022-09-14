@@ -51,10 +51,7 @@ func DoMovingCirclesCollide(aCircle vector.Circle, aVelocity vector.Vec2, bCircl
 	return 0
 }
 
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
 func PointLineDistance(v1, v2, p vector.Vec2) float64 {
-	slope := v2.Y - v1.Y/v2.X - v1.X
-	b := v1.Y - slope*v1.X
-	n := v1.Perpendicular().Unit()
-
-	return math.Abs(n.X*p.X+n.Y*p.Y+b) / math.Sqrt(n.X*n.X+n.Y*n.Y)
+	return math.Abs((v2.X-v1.X)*(v1.Y-p.Y)-(v1.X-p.X)*(v2.Y-v1.Y)) / math.Sqrt(math.Pow(v2.X-v1.X, 2)+math.Pow(v2.Y-v1.Y, 2))
 }
