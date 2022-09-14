@@ -21,19 +21,20 @@ import (
 )
 
 var (
-	ColisionDamage  = 0 // how much health does a player loose on colisions
-	CannonCooldown  = 60
-	ShellDamage     = 15
-	ViewRange       = 2500
-	MaxSpeed        = 25.0
-	MaxTurnPerTick  = 2.0
-	Acceleration    = 0.05
-	Friction        = Acceleration * 4
-	RespawnWaitTime = 180 // number ticks
-	ShellSpeed      = 30.0
-	UpdateSpeed     = 1
-	StepMode        = true // update frame on key press only
-	NextTick        = false
+	ColisionDamage        = 0 // how much health does a player loose on colisions
+	CannonCooldown        = 60
+	ShellDamage           = 15
+	ViewRange             = 2500
+	MaxSpeed              = 25.0
+	MaxTurnPerTick        = 2.0
+	Acceleration          = 0.05
+	Friction              = Acceleration * 4
+	RespawnWaitTime       = 180 // number ticks
+	ShellSpeed            = 30.0
+	UpdateSpeed           = 1
+	StepMode              = true // update frame on key press only
+	NextTick              = false
+	TickCounter     int64 = 0
 )
 
 func NewGame() *Game {
@@ -306,33 +307,54 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		}
 	}
 
-	// check arena bounds
 	collisionPoint := vector.Vec2{X: p.Position.X + p.Velocity.X, Y: p.Position.Y + p.Velocity.Y}
 	p.Collided = false
-	if collisionPoint.X < 0.0 || collisionPoint.X > float64(g.arenaMap.PixelWidth) ||
-		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius ||
+	// check left border
+	if collisionPoint.X-p.CollisionRadius < 0.0 || physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
+		p.Collided = true
+		p.Health -= ColisionDamage
+		p.Position.X = p.CollisionRadius + 1
+		p.Velocity.X = 0
+		log.Debug().Int64("tick", TickCounter).Str("name", p.Name).Str("new", p.Position.String()).Msg("collided left")
+	}
+	// check right border
+	if collisionPoint.X+p.CollisionRadius > float64(g.arenaMap.PixelWidth) ||
 		physics.PointLineDistance(vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
+		p.Position.X = float64(g.arenaMap.PixelWidth) - p.CollisionRadius - 1
+		p.Velocity.X = 0
+		log.Debug().Int64("tick", TickCounter).Str("name", p.Name).Str("new", p.Position.String()).Msg("collided right")
+		StepMode = true
+	}
+	// check top border
+	if collisionPoint.Y-p.CollisionRadius < 0.0 ||
+		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, collisionPoint) <= p.CollisionRadius {
+		p.Collided = true
+		p.Health -= ColisionDamage
+		p.Position.Y = p.CollisionRadius + 1
+		p.Velocity.Y = 0
+		log.Debug().Int64("tick", TickCounter).Str("name", p.Name).Str("new", p.Position.String()).Msg("collided top")
+	}
+	// check bottom border
+	if collisionPoint.Y+p.CollisionRadius > float64(g.arenaMap.PixelHeight) ||
+		physics.PointLineDistance( // TODO: PointLineDistance causes a wrong trigger here and for the width check
+			vector.Vec2{0, float64(g.arenaMap.PixelHeight)},
+			vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)},
+			collisionPoint) <= p.CollisionRadius {
+		p.Collided = true
+		p.Health -= ColisionDamage
+		p.Position.Y = float64(g.arenaMap.PixelHeight) - p.CollisionRadius - 1
+		p.Velocity.Y = 0
+		log.Debug().Int64("tick", TickCounter).Str("name", p.Name).Str("new", p.Position.String()).Msg("collided bottom")
+	}
+
+	if p.Collided {
 		if p.Health <= 0 && p.State == entities.Alive {
 			p.RespawnCooldown = RespawnWaitTime
 			p.State = entities.Dead
 			log.Info().Str("name", p.Name).Msg("crashed into level boundary")
 		}
-		// ToDo: p.Position - radius - level.X  =  displacement to left border
-		p.Velocity.X = 0
-	}
-	if collisionPoint.Y < 0.0 || collisionPoint.Y > float64(g.arenaMap.PixelHeight) ||
-		physics.PointLineDistance(vector.Vec2{0, 0}, vector.Vec2{float64(g.arenaMap.PixelWidth), 0}, collisionPoint) <= p.CollisionRadius ||
-		physics.PointLineDistance(vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
-		p.Collided = true
-		p.Health -= ColisionDamage
-		if p.Health <= 0 && p.State == entities.Alive {
-			p.RespawnCooldown = RespawnWaitTime
-			p.State = entities.Dead
-			log.Info().Str("name", p.Name).Str("axis", "y").Msg("crashed into level boundary")
-		}
-		p.Velocity.Y = 0
 	}
 
 	// check hit by shell
@@ -382,6 +404,8 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	// 		p.Movement.Y = 0
 	// 	}
 	// }
+
+	TickCounter += 1
 }
 
 func remove(s []*entities.Shell, i int) []*entities.Shell {
@@ -579,7 +603,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Velocity: %s", g.selectedPlayer.Velocity), 16, 128)
 	} else {
 		for i, p := range g.players {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s H(%d/%d) S(%.0f/%.0f)", i+1, p.Name, p.Health, p.MaxHealth, math.Round(p.Velocity.Length()), p.MaxSpeed), 16, 48+i*16)
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("#%d - %s H(%d/%d) S(%.0f/%.0f) %s", i+1, p.Name, p.Health, p.MaxHealth, math.Round(p.Velocity.Length()), p.MaxSpeed, p.Position), 16, 48+i*16)
 		}
 	}
 }
