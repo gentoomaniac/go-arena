@@ -1,8 +1,6 @@
 package entities
 
 import (
-	"image"
-
 	"github.com/gentoomaniac/go-arena/gfx"
 	"github.com/gentoomaniac/go-arena/vector"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,44 +18,34 @@ func (s State) String() string {
 }
 
 type Player struct {
-	Name            string
-	State           State
-	Position        vector.Vec2
-	Movement        vector.Vec2
-	Hitbox          image.Rectangle
-	Health          int
-	MaxHealth       int
-	Energy          int
-	MaxEnergy       int
-	CurrentSpeed    float64
-	TargetSpeed     float64
-	MaxSpeed        float64
-	Acceleration    float64
-	Orientation     float64
-	CollisionBounds vector.Rectangle
-	Collided        bool
-	CannonCooldown  int
-	Hit             bool
-	Sprite          *ebiten.Image
-	Color           *gfx.Color
-	AI              AI
-	Animations      map[gfx.AnimationType]*gfx.Animation
-	NumberRespawns  int
-	MaxRespawns     int
-	RespawnCooldown int
-}
-
-func (p Player) CollisionBox() vector.Rectangle {
-	return vector.Rectangle{
-		Min: vector.Vec2{
-			X: p.Position.X + p.CollisionBounds.Min.X,
-			Y: p.Position.Y + p.CollisionBounds.Min.Y,
-		},
-		Max: vector.Vec2{
-			X: p.Position.X + p.CollisionBounds.Max.X,
-			Y: p.Position.Y + p.CollisionBounds.Max.Y,
-		},
-	}
+	ID           int
+	Name         string
+	State        State
+	Position     vector.Vec2
+	Acceleration float64
+	Friction     float64
+	Velocity     vector.Vec2
+	Orientation  vector.Vec2
+	Mass         float64
+	Health       int
+	MaxHealth    int
+	Energy       int
+	MaxEnergy    int
+	//CurrentSpeed     float64
+	TargetSpeed      float64
+	MaxSpeed         float64
+	CollisionRadius  float64
+	Collided         bool
+	CollidedWithTank bool
+	CannonCooldown   int
+	Hit              bool
+	Sprite           *ebiten.Image
+	Color            *gfx.Color
+	AI               AI
+	Animations       map[gfx.AnimationType]*gfx.Animation
+	NumberRespawns   int
+	MaxRespawns      int
+	RespawnCooldown  int
 }
 
 func (p *Player) UpdateSpeed(newSpeed float64) {
@@ -68,9 +56,20 @@ func (p *Player) UpdateSpeed(newSpeed float64) {
 		p.TargetSpeed = -p.MaxSpeed
 	}
 
-	if p.CurrentSpeed > p.TargetSpeed {
-		p.CurrentSpeed -= p.Acceleration
-	} else if p.CurrentSpeed < p.TargetSpeed {
-		p.CurrentSpeed += p.Acceleration
+	if p.Velocity.Length() == 0 {
+		if newSpeed > p.Acceleration {
+			p.Velocity = vector.FromAngle(p.Orientation.Angle(), p.Acceleration)
+		} else {
+			p.Velocity = vector.FromAngle(p.Orientation.Angle(), newSpeed)
+		}
+	} else if p.Velocity.Length() > p.TargetSpeed {
+		p.Velocity = p.Velocity.Unit().WithLength(p.Velocity.Length() - p.Acceleration)
+	} else if p.Velocity.Length() < p.TargetSpeed {
+		p.Velocity = p.Velocity.Unit().WithLength(p.Velocity.Length() + p.Acceleration)
 	}
+}
+
+func (p *Player) UpdateOrientation(angle float64) {
+	p.Orientation = p.Velocity.Rotate(angle)
+	p.Velocity = p.Velocity.Rotate(angle)
 }
