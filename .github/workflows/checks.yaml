@@ -32,7 +32,7 @@ jobs:
         run: go mod download
 
       - name: Go Vet
-        run: go vet .
+        run: go vet -composites=false .
 
       - name: Go Build
         run: go build .
