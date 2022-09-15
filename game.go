@@ -325,7 +325,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 		p.Position.X = float64(g.arenaMap.PixelWidth) - p.CollisionRadius - 1
 		p.Velocity.X = 0
 		log.Debug().Int64("tick", TickCounter).Str("name", p.Name).Str("new", p.Position.String()).Msg("collided right")
-		StepMode = true
+		//StepMode = true
 	}
 	// check top border
 	if collisionPoint.Y-p.CollisionRadius < 0.0 ||
@@ -338,10 +338,7 @@ func (g *Game) updatePlayer(p *entities.Player) {
 	}
 	// check bottom border
 	if collisionPoint.Y+p.CollisionRadius > float64(g.arenaMap.PixelHeight) ||
-		physics.PointLineDistance( // TODO: PointLineDistance causes a wrong trigger here and for the width check
-			vector.Vec2{0, float64(g.arenaMap.PixelHeight)},
-			vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)},
-			collisionPoint) <= p.CollisionRadius {
+		physics.PointLineDistance(vector.Vec2{0, float64(g.arenaMap.PixelHeight)}, vector.Vec2{float64(g.arenaMap.PixelWidth), float64(g.arenaMap.PixelHeight)}, collisionPoint) <= p.CollisionRadius {
 		p.Collided = true
 		p.Health -= ColisionDamage
 		p.Position.Y = float64(g.arenaMap.PixelHeight) - p.CollisionRadius - 1

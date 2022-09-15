@@ -24,6 +24,7 @@ func (t *TestBot) Compute(input entities.AIInput) entities.AIOutput {
 
 	if input.Collided {
 		orientation = -10 - float64(rand.Int()%10)
+		speed = 5
 	}
 
 	if input.CollidedWithTank {
