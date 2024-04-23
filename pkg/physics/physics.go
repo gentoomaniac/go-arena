@@ -3,7 +3,7 @@ package physics
 import (
 	"math"
 
-	"github.com/gentoomaniac/go-arena/vector"
+	"github.com/gentoomaniac/go-arena/pkg/vector"
 )
 
 func PointInRectangle(a vector.Vec2, b vector.Rectangle) bool {

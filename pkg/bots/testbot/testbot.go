@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/gentoomaniac/go-arena/entities"
+	"github.com/gentoomaniac/go-arena/pkg/entities"
 )
 
 type TestBot struct {

@@ -3,7 +3,7 @@ package main
 import (
 	"math/rand"
 
-	"github.com/gentoomaniac/go-arena/entities"
+	"github.com/gentoomaniac/go-arena/pkg/entities"
 )
 
 type GentooBot struct {

@@ -1,4 +1,4 @@
-package main
+package go_arena
 
 import (
 	"bytes"
@@ -10,11 +10,11 @@ import (
 	_ "embed"
 
 	"github.com/gentoomaniac/ebitmx"
-	"github.com/gentoomaniac/go-arena/entities"
-	"github.com/gentoomaniac/go-arena/gfx"
-	"github.com/gentoomaniac/go-arena/physics"
-	"github.com/gentoomaniac/go-arena/ui"
-	"github.com/gentoomaniac/go-arena/vector"
+	"github.com/gentoomaniac/go-arena/pkg/entities"
+	"github.com/gentoomaniac/go-arena/pkg/gfx"
+	"github.com/gentoomaniac/go-arena/pkg/physics"
+	"github.com/gentoomaniac/go-arena/pkg/ui"
+	"github.com/gentoomaniac/go-arena/pkg/vector"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/rs/zerolog/log"
@@ -80,9 +80,6 @@ func (g *Game) WithScalingFactor(s float64) *Game {
 	g.scalingFactor = s
 	return g
 }
-
-//go:embed gfx/fire_transparent.gif
-var fireGif []byte
 
 func (g *Game) WithRespawns(respawns int) *Game {
 	g.respawns = respawns
@@ -162,7 +159,7 @@ func (g *Game) WithBots(bots []string) *Game {
 		}
 		player.Animations = make(map[gfx.AnimationType]*gfx.Animation)
 
-		fireAnimation, err := gfx.AnimationFromGIF(bytes.NewReader(fireGif))
+		fireAnimation, err := gfx.AnimationFromGIF(bytes.NewReader(gfx.FireGif))
 		if err != nil {
 			log.Error().Err(err).Msg("could not load fire animation")
 			return nil

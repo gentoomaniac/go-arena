@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gentoomaniac/go-arena/vector"
+	"github.com/gentoomaniac/go-arena/pkg/vector"
 )
 
 func TestIntersection(t *testing.T) {

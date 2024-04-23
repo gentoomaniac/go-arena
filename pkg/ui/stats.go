@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"image/png"
 
-	"github.com/gentoomaniac/go-arena/entities"
+	"github.com/gentoomaniac/go-arena/pkg/entities"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/rs/zerolog/log"
+
+	"github.com/gentoomaniac/go-arena/pkg/ui/runes"
 )
 
 var (
@@ -33,11 +35,11 @@ func init() {
 }
 
 func NewStats(headline string, players []*entities.Player) *Stats {
-	return &Stats{headline: NewText(headline), players: players}
+	return &Stats{headline: runes.NewText(headline), players: players}
 }
 
 type Stats struct {
-	headline *Text
+	headline *runes.Text
 	cache    *ebiten.Image
 	players  []*entities.Player
 }
@@ -61,9 +63,9 @@ func (s *Stats) Image(refresh bool) *ebiten.Image {
 		op.GeoM.Scale(TextScaling, TextScaling)
 		op.GeoM.Translate(MarginLeft, MarginTop+float64(headlineImg.Bounds().Dy())*HeadlineScaling+Spacer)
 		for index, p := range s.players {
-			text := NewText(fmt.Sprintf("#%d %s %d", index+1, p.Name, p.Health))
+			text := runes.NewText(fmt.Sprintf("#%d %s %d", index+1, p.Name, p.Health))
 			s.cache.DrawImage(text.Image(false), op)
-			op.GeoM.Translate(0, float64(text.image.Bounds().Dy())*TextScaling+Spacer)
+			op.GeoM.Translate(0, float64(text.Image(false).Bounds().Dy())*TextScaling+Spacer)
 		}
 	}
 	return s.cache

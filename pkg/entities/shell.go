@@ -1,8 +1,8 @@
 package entities
 
 import (
-	"github.com/gentoomaniac/go-arena/gfx"
-	"github.com/gentoomaniac/go-arena/vector"
+	"github.com/gentoomaniac/go-arena/pkg/gfx"
+	"github.com/gentoomaniac/go-arena/pkg/vector"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

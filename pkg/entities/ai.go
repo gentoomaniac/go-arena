@@ -1,6 +1,6 @@
 package entities
 
-import "github.com/gentoomaniac/go-arena/vector"
+import "github.com/gentoomaniac/go-arena/pkg/vector"
 
 type AIInput struct {
 	Position         vector.Vec2

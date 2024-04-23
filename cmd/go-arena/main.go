@@ -7,6 +7,8 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/gentoomaniac/logging"
 	"github.com/rs/zerolog/log"
+
+	go_arena "github.com/gentoomaniac/go-arena/pkg/go-arena"
 )
 
 var (
@@ -19,10 +21,10 @@ var cli struct {
 	Bot      []string `short:"b" help:"add another bot with this filename to the arena" required:""`
 	Respawns int      `short:"r" help:"Number of respawns"`
 
+	MapPath string `short:"m" help:"Path to the map file" default:"maps\test.tmx"`
+
 	ProfileMemory string `help:"write a memory profile"`
 	ProfileCPU    string `help:"write a cpu profile"`
-
-	Version kong.VersionFlag `short:"v" help:"Display version."`
 }
 
 func main() {
@@ -47,7 +49,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	run(cli.Bot)
+	go_arena.Run(go_arena.RunOpts{Bots: cli.Bot, Respawns: cli.Respawns, MapPath: cli.MapPath})
 
 	if cli.ProfileMemory != "" {
 		f, err := os.Create(cli.ProfileMemory)
