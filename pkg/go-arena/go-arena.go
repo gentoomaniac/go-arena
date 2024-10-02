@@ -2,8 +2,6 @@ package go_arena
 
 import (
 	"image"
-	"math/rand"
-	"time"
 
 	"github.com/gentoomaniac/ebitmx"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -34,7 +32,6 @@ func Run(opts RunOpts) {
 	tmxMap.CameraPosition = startPosition
 	log.Debug().Int("width", tmxMap.PixelWidth).Int("height", tmxMap.PixelHeight).Msg("map dimensions")
 
-	rand.Seed(time.Now().UTC().UnixNano())
 	game := NewGame().WithMap(tmxMap).WithScalingFactor(scalingFactor).WithRespawns(opts.Respawns).WithBots(opts.Bots)
 	err := game.Init()
 	if err != nil {
